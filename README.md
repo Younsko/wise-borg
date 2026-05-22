@@ -64,7 +64,8 @@ Dès qu'une vraie opportunité est validée :
 | **Notification de Bureau** | Des alertes Windows riches avec image de l'item, nom du vendeur, prix et profit estimé. | Tu peux regarder une vidéo ou jouer, tu ne rateras jamais un deal. |
 | **Filtre de Rangs Avancé** | Choisis d'afficher uniquement les Mods/Arcanes Rang 0, Maxés, ou tous les rangs. | Tu cibles précisément ce que tu as les moyens d'acheter ou de revendre. |
 | **Mémoire Ultra-Rapide** | Sauvegarde locale des prix moyens du marché sur ton PC. | L'application démarre et réagit en moins de 5 millisecondes au lancement. |
-| **Whisper Anti-Propagation** | Copie le message de transaction en un clic sans ouvrir d'onglet parasite. | Vitesse d'exécution maximale pour contacter le vendeur avant les autres. |
+| **Auto-Copie Intelligent** | Cliquer n'importe où sur une carte ouvre sa page ET copie le whisper en arrière-plan. | Vitesse absolue : un seul clic pour ouvrir l'onglet de vente et copier le message de chat ! |
+| **Whisper Anti-Propagation** | Copie le message de transaction en un clic sans ouvrir d'onglet parasite via le bouton dédié. | Vitesse d'exécution maximale sans aucun onglet parasite inutile. |
 
 ---
 
