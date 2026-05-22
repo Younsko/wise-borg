@@ -1,0 +1,6 @@
+node_modules/
+typical_price_cache.json
+items_cache.json
+scratch/
+.DS_Store
+*.log

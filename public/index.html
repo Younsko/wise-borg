@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WISE BORG // Warframe.market Deal Sniper</title>
+  <!-- Google Fonts for premium sci-fi typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Futuristic Scanning grid overlay -->
+  <div class="scanner-grid-overlay"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-container">
+        <div class="lotus-glow"></div>
+        <span class="logo-text">WISE BORG <span class="logo-subtext">// DEAL SNIPER</span></span>
+      </div>
+      <div class="system-status">
+        <div class="status-indicator">
+          <span class="status-pulse" id="scannerPulse"></span>
+          <span class="status-label" id="scannerStatusLabel">Connexion...</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-val" id="statRequests">0</span>
+            <span class="stat-lbl">REQ API</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val" id="statQueue">0</span>
+            <span class="stat-lbl">QUEUE</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val" id="statCache">0</span>
+            <span class="stat-lbl">CACHE PRIX</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val text-gold" id="statDealsFound">0</span>
+            <span class="stat-lbl">SNIPES</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-content">
+      <!-- Control Panel -->
+      <section class="control-panel panel-glass">
+        <h2 class="panel-title">Console de Contrôle</h2>
+        
+        <!-- Manual Scan Section -->
+        <div class="control-group">
+          <label for="itemSearchInput">Rechercher & Scanner un Item</label>
+          <div class="search-box-container">
+            <input type="text" id="itemSearchInput" placeholder="Ex: Xaku Prime Blueprint..." autocomplete="off">
+            <button id="btnManualScan" class="btn btn-primary btn-glow">
+              <span class="btn-text">SCANNER</span>
+              <div class="btn-pulse"></div>
+            </button>
+            <div id="autocompleteDropdown" class="autocomplete-dropdown dropdown-hidden"></div>
+          </div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <!-- Filter Controls -->
+        <div class="filter-controls">
+          <div class="control-group">
+            <div class="slider-header">
+              <label for="filterDiscount">Discount Minimum</label>
+              <span class="slider-value" id="valDiscount">20%</span>
+            </div>
+            <input type="range" id="filterDiscount" min="15" max="80" value="20" step="5">
+          </div>
+
+          <div class="control-group">
+            <div class="slider-header">
+              <label for="filterProfit">Profit Plat Minimum</label>
+              <span class="slider-value" id="valProfit">3 <span>Plat</span></span>
+            </div>
+            <input type="range" id="filterProfit" min="2" max="50" value="3" step="1">
+          </div>
+
+          <div class="control-group">
+            <div class="slider-header">
+              <label for="filterInterval">Auto-Refresh Interval</label>
+              <span class="slider-value" id="valInterval">10s</span>
+            </div>
+            <input type="range" id="filterInterval" min="2" max="60" value="10" step="1">
+          </div>
+
+          <div class="control-group">
+            <label for="filterText">Filtrer par Nom</label>
+            <input type="text" id="filterText" placeholder="Ex: Prime, Arcane...">
+          </div>
+
+          <div class="control-group">
+            <label for="filterRank">Filtrer par Rangs</label>
+            <select id="filterRank" class="select-premium">
+              <option value="all">Tous les rangs</option>
+              <option value="rank0">Rang 0 uniquement</option>
+              <option value="maxed">Rang Max uniquement</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <!-- Utility Controls -->
+        <div class="utility-actions">
+          <button id="btnManualRefresh" class="btn btn-refresh">
+            <span class="refresh-icon">&#x21BB;</span> Rafraîchir
+          </button>
+          <button id="btnClearDeals" class="btn btn-secondary">
+            Effacer la Liste
+          </button>
+          <div class="notification-toggle">
+            <label class="switch-container">
+              <input type="checkbox" id="toggleSound">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="toggle-label">Alertes Sonores</span>
+          </div>
+          <div class="notification-toggle">
+            <label class="switch-container">
+              <input type="checkbox" id="toggleDesktop">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="toggle-label">Alertes Bureau (Notifications)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Active Deals Section -->
+      <section class="deals-section">
+        <div class="deals-header">
+          <h2 class="section-title">Offres Snipées en Temps Réel <span class="badge" id="dealsCount">0</span></h2>
+          <div class="sorting-controls">
+            <span class="sort-label">Trier par:</span>
+            <button class="sort-btn active" data-sort="discount">Discount %</button>
+            <button class="sort-btn" data-sort="margin">Marge Plat</button>
+            <button class="sort-btn" data-sort="recency">Plus Récents</button>
+          </div>
+        </div>
+
+        <!-- Deals Grid -->
+        <div class="deals-grid" id="dealsGrid">
+          <!-- Empty State (Shows when no deals are active) -->
+          <div class="empty-state" id="emptyState">
+            <div class="radar-scan">
+              <div class="radar-circle circle-1"></div>
+              <div class="radar-circle circle-2"></div>
+              <div class="radar-circle circle-3"></div>
+              <div class="radar-sweep"></div>
+              <div class="radar-center"></div>
+            </div>
+            <h3 class="empty-title">Recherche de Snipes en Cours...</h3>
+            <p class="empty-desc">
+              WISE BORG écoute le flux de Warframe.market pour attraper les prix anormalement bas.<br>
+              Les offres des personnes <strong class="text-teal">ONLINE IN GAME</strong> apparaîtront ici dès qu'une opportunité se présente.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer text-muted">
+      <span>WISE BORG Sniper v1.0.0 &bull; Développé pour les Tenno</span>
+      <span class="rate-status text-teal">Limit: 3 req/sec</span>
+    </footer>
+  </div>
+
+  <!-- Notification Audio element -->
+  <audio id="audioNotification" preload="auto"></audio>
+  <script src="app.js"></script>
+</body>
+</html>
