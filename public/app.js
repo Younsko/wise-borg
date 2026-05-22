@@ -1,25 +1,28 @@
 /* ==========================================================================
-   WARFRAME DEAL SNIPER - FRONTEND BEHAVIOR (VANILLA JS)
+   WARFRAME DEAL SNIPER - PREMIUM DIGITAL FRONTEND (VANILLA JS)
    ========================================================================== */
 
 // Application State
 const state = {
-  items: [],              // All tradable items for autocomplete
+  items: [],              // All tradable items for manual scan autocomplete
   deals: [],              // Currently spotted deals from server
   seenDealIds: new Set(), // Set of deal IDs we've already notified about
   selectedItem: null,     // Currently selected item for manual scan
   filters: {
     discount: 20,
-    profit: 3,
+    profit: 10,
     text: '',
-    rank: 'all'
+    rank: 'all',
+    rarity: 'all',        // 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+    category: 'all'       // 'all' | 'prime' | 'arme' | 'warframe' | 'mod' | 'accessoire'
   },
   sort: 'discount',       // 'discount' | 'margin' | 'recency'
   soundEnabled: false,
   desktopNotificationsEnabled: false,
-  isScanning: false,
+  isAutoRefreshEnabled: true,
   pollInterval: 10,       // dynamic auto-refresh interval in seconds
-  dealsIntervalId: null   // active interval timer ID
+  countdownTimeLeft: 10,  // seconds remaining until next fetch
+  countdownIntervalId: null
 };
 
 // Web Audio API Synthesizer for notifications
@@ -85,41 +88,81 @@ function playNotificationSound(rarity) {
   }
 }
 
-// DOM Elements
+// DOM Elements Mapping
 const el = {
+  // Connection and Status
   scannerPulse: document.getElementById('scannerPulse'),
   scannerStatusLabel: document.getElementById('scannerStatusLabel'),
   statRequests: document.getElementById('statRequests'),
   statQueue: document.getElementById('statQueue'),
   statCache: document.getElementById('statCache'),
   statDealsFound: document.getElementById('statDealsFound'),
+
+  // Autocomplete Search Panel (Sidebar)
   itemSearchInput: document.getElementById('itemSearchInput'),
   btnManualScan: document.getElementById('btnManualScan'),
   autocompleteDropdown: document.getElementById('autocompleteDropdown'),
+
+  // Sidebar controls
   filterDiscount: document.getElementById('filterDiscount'),
   valDiscount: document.getElementById('valDiscount'),
   filterProfit: document.getElementById('filterProfit'),
   valProfit: document.getElementById('valProfit'),
   filterInterval: document.getElementById('filterInterval'),
   valInterval: document.getElementById('valInterval'),
-  filterText: document.getElementById('filterText'),
   filterRank: document.getElementById('filterRank'),
-  btnClearDeals: document.getElementById('btnClearDeals'),
-  btnManualRefresh: document.getElementById('btnManualRefresh'),
+  toggleAutoRefresh: document.getElementById('toggleAutoRefresh'),
   toggleSound: document.getElementById('toggleSound'),
   toggleDesktop: document.getElementById('toggleDesktop'),
-  dealsCount: document.getElementById('dealsCount'),
+
+  // Top header elements
+  filterText: document.getElementById('filterText'),
+  toggleDesktopHeader: document.getElementById('toggleDesktopHeader'),
+  desktopAlertText: document.getElementById('desktopAlertText'),
+  sortSelect: document.getElementById('sortSelect'),
+  sidebarSortSelect: document.getElementById('sidebarSortSelect'),
+
+  // Dynamic Content Grid Slots
   dealsGrid: document.getElementById('dealsGrid'),
+  featuredDealSection: document.getElementById('featuredDealSection'),
   emptyState: document.getElementById('emptyState'),
-  sortBtns: document.querySelectorAll('.sort-btn')
+
+  // General Reset and trigger buttons
+  btnResetFilters: document.getElementById('btnResetFilters'),
+  btnClearDeals: document.getElementById('btnClearDeals'),
+  btnManualRefresh: document.getElementById('btnManualRefresh'),
+  countdownTimer: document.getElementById('countdownTimer'),
+
+  // Collapsible toggle filter
+  toggleFiltersCollapse: document.getElementById('toggleFiltersCollapse'),
+  filtersContainer: document.getElementById('filtersContainer')
 };
 
-// Start or adjust the active deal polling schedule dynamically
-function startDealsPolling() {
-  if (state.dealsIntervalId) {
-    clearInterval(state.dealsIntervalId);
+// Start or adjust the active deal polling schedule dynamically via second countdowns
+function startCountdownTimer() {
+  if (state.countdownIntervalId) {
+    clearInterval(state.countdownIntervalId);
   }
-  state.dealsIntervalId = setInterval(pollDeals, state.pollInterval * 1000);
+  
+  state.countdownIntervalId = setInterval(() => {
+    if (!state.isAutoRefreshEnabled) {
+      if (el.countdownTimer) {
+        el.countdownTimer.textContent = '--';
+      }
+      return;
+    }
+    
+    state.countdownTimeLeft--;
+    if (state.countdownTimeLeft <= 0) {
+      state.countdownTimeLeft = state.pollInterval;
+      pollDeals();
+      pollStatus();
+    }
+    
+    if (el.countdownTimer) {
+      el.countdownTimer.textContent = state.countdownTimeLeft;
+    }
+  }, 1000);
 }
 
 // Initialize Application
@@ -130,34 +173,31 @@ async function init() {
   const savedSound = localStorage.getItem('wiseBorg_soundEnabled');
   if (savedSound !== null) {
     state.soundEnabled = savedSound === 'true';
-    el.toggleSound.checked = state.soundEnabled;
+    if (el.toggleSound) el.toggleSound.checked = state.soundEnabled;
   }
   
   const savedDesktop = localStorage.getItem('wiseBorg_desktopNotifications');
   if (savedDesktop !== null) {
-    state.desktopNotificationsEnabled = savedDesktop === 'true';
-    el.toggleDesktop.checked = state.desktopNotificationsEnabled;
+    const isEnabled = savedDesktop === 'true';
+    syncDesktopNotifications(isEnabled);
     
-    // Auto-disable and uncheck if permission was revoked or denied
-    if (state.desktopNotificationsEnabled && typeof Notification !== 'undefined') {
+    // Auto-disable if permission was revoked
+    if (isEnabled && typeof Notification !== 'undefined') {
       if (Notification.permission !== 'granted') {
-        state.desktopNotificationsEnabled = false;
-        el.toggleDesktop.checked = false;
-        localStorage.setItem('wiseBorg_desktopNotifications', 'false');
+        syncDesktopNotifications(false);
       }
     }
   }
 
   await fetchItemsList();
   
-  // Start polling loops
+  // Load initial dataset
   pollStatus();
   pollDeals();
-  setInterval(pollStatus, 2000);
-  startDealsPolling();
+  startCountdownTimer();
 }
 
-// Fetch Autocomplete Items manifest from server
+// Fetch Autocomplete Items list from server
 async function fetchItemsList() {
   try {
     const res = await fetch('/api/items');
@@ -168,84 +208,193 @@ async function fetchItemsList() {
   }
 }
 
+// Sync desktop notification settings across both header and sidebar controls
+function syncDesktopNotifications(checked) {
+  state.desktopNotificationsEnabled = checked;
+  if (el.toggleDesktop) el.toggleDesktop.checked = checked;
+  if (el.toggleDesktopHeader) el.toggleDesktopHeader.checked = checked;
+  if (el.desktopAlertText) {
+    el.desktopAlertText.textContent = checked ? "Alertes Activées" : "Alertes Désactivées";
+  }
+  localStorage.setItem('wiseBorg_desktopNotifications', checked ? 'true' : 'false');
+}
+
+// Synchronize Sorting selection dropdowns
+function syncSort(val) {
+  state.sort = val;
+  if (el.sidebarSortSelect) el.sidebarSortSelect.value = val;
+  if (el.sortSelect) el.sortSelect.value = val;
+  renderDeals();
+}
+
 // Setup Event Listeners
 function setupEventListeners() {
   // Autocomplete Search input
-  el.itemSearchInput.addEventListener('input', handleSearchInput);
+  if (el.itemSearchInput) el.itemSearchInput.addEventListener('input', handleSearchInput);
   
   // Close autocomplete dropdown when clicking outside
   document.addEventListener('click', (e) => {
-    if (!el.itemSearchInput.contains(e.target) && !el.autocompleteDropdown.contains(e.target)) {
+    if (el.itemSearchInput && !el.itemSearchInput.contains(e.target) && el.autocompleteDropdown && !el.autocompleteDropdown.contains(e.target)) {
       el.autocompleteDropdown.classList.add('dropdown-hidden');
     }
   });
 
   // Manual Scan Trigger
-  el.btnManualScan.addEventListener('click', triggerManualScan);
+  if (el.btnManualScan) el.btnManualScan.addEventListener('click', triggerManualScan);
   
   // Filters sliders & text inputs
-  el.filterDiscount.addEventListener('input', (e) => {
-    state.filters.discount = parseInt(e.target.value);
-    el.valDiscount.textContent = `${state.filters.discount}%`;
-    renderDeals();
-  });
-
-  el.filterProfit.addEventListener('input', (e) => {
-    state.filters.profit = parseInt(e.target.value);
-    el.valProfit.innerHTML = `${state.filters.profit} <span>Plat</span>`;
-    renderDeals();
-  });
-
-  el.filterInterval.addEventListener('input', (e) => {
-    state.pollInterval = parseInt(e.target.value);
-    el.valInterval.textContent = `${state.pollInterval}s`;
-  });
-
-  el.filterInterval.addEventListener('change', (e) => {
-    state.pollInterval = parseInt(e.target.value);
-    el.valInterval.textContent = `${state.pollInterval}s`;
-    startDealsPolling();
-    console.log(`[Polling] Adjusted deals poll interval to ${state.pollInterval}s.`);
-  });
-
-  el.filterText.addEventListener('input', (e) => {
-    state.filters.text = e.target.value.toLowerCase().trim();
-    renderDeals();
-  });
-
-  el.filterRank.addEventListener('change', (e) => {
-    state.filters.rank = e.target.value;
-    renderDeals();
-  });
-
-  // Clear list
-  el.btnClearDeals.addEventListener('click', async () => {
-    try {
-      await fetch('/api/clear-deals', { method: 'POST' });
-      state.deals = [];
-      state.seenDealIds.clear();
+  if (el.filterDiscount) {
+    el.filterDiscount.addEventListener('input', (e) => {
+      state.filters.discount = parseInt(e.target.value);
+      if (el.valDiscount) el.valDiscount.textContent = `${state.filters.discount}%`;
       renderDeals();
-    } catch (e) {
-      console.error(e);
-    }
-  });
+    });
+  }
+
+  if (el.filterProfit) {
+    el.filterProfit.addEventListener('input', (e) => {
+      state.filters.profit = parseInt(e.target.value);
+      if (el.valProfit) el.valProfit.innerHTML = `${state.filters.profit} <span>plat</span>`;
+      renderDeals();
+    });
+  }
+
+  if (el.filterInterval) {
+    el.filterInterval.addEventListener('input', (e) => {
+      state.pollInterval = parseInt(e.target.value);
+      if (el.valInterval) el.valInterval.textContent = `Toutes les ${state.pollInterval} secondes`;
+    });
+
+    el.filterInterval.addEventListener('change', (e) => {
+      state.pollInterval = parseInt(e.target.value);
+      state.countdownTimeLeft = state.pollInterval;
+      startCountdownTimer();
+      console.log(`[Polling] Adjusted auto refresh delay to ${state.pollInterval}s.`);
+    });
+  }
+
+  if (el.filterText) {
+    el.filterText.addEventListener('input', (e) => {
+      state.filters.text = e.target.value.toLowerCase().trim();
+      renderDeals();
+    });
+  }
+
+  if (el.filterRank) {
+    el.filterRank.addEventListener('change', (e) => {
+      state.filters.rank = e.target.value;
+      renderDeals();
+    });
+  }
+
+  // Toggle Auto refresh switch
+  if (el.toggleAutoRefresh) {
+    el.toggleAutoRefresh.addEventListener('change', (e) => {
+      state.isAutoRefreshEnabled = e.target.checked;
+      state.countdownTimeLeft = state.pollInterval;
+      console.log(`[Polling] Auto refresh state toggled to: ${state.isAutoRefreshEnabled}`);
+    });
+  }
+
+  // Double-sync Sort selects
+  if (el.sidebarSortSelect) {
+    el.sidebarSortSelect.addEventListener('change', (e) => {
+      syncSort(e.target.value);
+    });
+  }
+  if (el.sortSelect) {
+    el.sortSelect.addEventListener('change', (e) => {
+      syncSort(e.target.value);
+    });
+  }
+
+  // Rarity pills selection trigger
+  const pillsGrid = document.getElementById('rarityPillsGrid');
+  if (pillsGrid) {
+    pillsGrid.querySelectorAll('.rarity-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        pillsGrid.querySelectorAll('.rarity-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        state.filters.rarity = pill.getAttribute('data-rarity');
+        renderDeals();
+      });
+    });
+  }
+
+  // Categories filter tags row trigger
+  const categoriesRow = document.getElementById('categoriesRow');
+  if (categoriesRow) {
+    categoriesRow.querySelectorAll('.category-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        categoriesRow.querySelectorAll('.category-tag').forEach(t => t.classList.remove('active'));
+        tag.classList.add('active');
+        state.filters.category = tag.getAttribute('data-category');
+        renderDeals();
+      });
+    });
+  }
+
+  // Reset Filters Button
+  if (el.btnResetFilters) {
+    el.btnResetFilters.addEventListener('click', () => {
+      state.filters.discount = 20;
+      state.filters.profit = 10;
+      state.filters.text = '';
+      state.filters.rank = 'all';
+      state.filters.rarity = 'all';
+      state.filters.category = 'all';
+      
+      // Update UI components
+      if (el.filterDiscount) el.filterDiscount.value = 20;
+      if (el.valDiscount) el.valDiscount.textContent = '20%';
+      if (el.filterProfit) el.filterProfit.value = 10;
+      if (el.valProfit) el.valProfit.innerHTML = '10 <span>plat</span>';
+      if (el.filterRank) el.filterRank.value = 'all';
+      if (el.filterText) el.filterText.value = '';
+      
+      // Reset active tags
+      if (pillsGrid) {
+        pillsGrid.querySelectorAll('.rarity-pill').forEach(p => p.classList.remove('active'));
+        const defaultPill = pillsGrid.querySelector('[data-rarity="all"]');
+        if (defaultPill) defaultPill.classList.add('active');
+      }
+      if (categoriesRow) {
+        categoriesRow.querySelectorAll('.category-tag').forEach(t => t.classList.remove('active'));
+        const defaultTag = categoriesRow.querySelector('[data-category="all"]');
+        if (defaultTag) defaultTag.classList.add('active');
+      }
+      
+      renderDeals();
+    });
+  }
+
+  // Clear list button
+  if (el.btnClearDeals) {
+    el.btnClearDeals.addEventListener('click', async () => {
+      try {
+        await fetch('/api/clear-deals', { method: 'POST' });
+        state.deals = [];
+        state.seenDealIds.clear();
+        renderDeals();
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  }
 
   // Manual Refresh Deals button click
   if (el.btnManualRefresh) {
     el.btnManualRefresh.addEventListener('click', async () => {
-      // Add visual refreshing state
       el.btnManualRefresh.classList.add('refreshing');
-      
-      // Play a quick chime to show click register
       playNotificationSound('uncommon');
       
       try {
         await pollDeals();
         await pollStatus();
+        state.countdownTimeLeft = state.pollInterval;
       } catch (err) {
         console.error('Manual refresh failed:', err);
       } finally {
-        // Leave the refreshing icon spinning for at least 800ms for visual feel
         setTimeout(() => {
           el.btnManualRefresh.classList.remove('refreshing');
         }, 800);
@@ -253,85 +402,78 @@ function setupEventListeners() {
     });
   }
 
-  // Toggle Sound alert
-  el.toggleSound.addEventListener('change', (e) => {
-    state.soundEnabled = e.target.checked;
-    localStorage.setItem('wiseBorg_soundEnabled', state.soundEnabled);
-  });
+  // Toggle Sound Alert
+  if (el.toggleSound) {
+    el.toggleSound.addEventListener('change', (e) => {
+      state.soundEnabled = e.target.checked;
+      localStorage.setItem('wiseBorg_soundEnabled', state.soundEnabled);
+    });
+  }
 
-  // Toggle Desktop Notifications
-  el.toggleDesktop.addEventListener('change', async (e) => {
-    if (e.target.checked) {
-      console.log("[Notifications] Toggle checked. Current permission:", typeof Notification !== 'undefined' ? Notification.permission : 'undefined');
-      console.log("[Notifications] Context is secure:", window.isSecureContext);
-
+  // Double-sync Desktop alerts
+  const handleDesktopChange = async (e) => {
+    const checked = e.target.checked;
+    
+    if (checked) {
       if (typeof Notification === 'undefined') {
-        alert('Votre navigateur ne supporte pas les notifications de bureau (ou l\'origin n\'est pas sécurisée).');
-        e.target.checked = false;
-        state.desktopNotificationsEnabled = false;
+        alert('Votre navigateur ne supporte pas les notifications de bureau.');
+        syncDesktopNotifications(false);
         return;
       }
       
-      // Safety check for secure origin
       if (!window.isSecureContext) {
-        alert('Les notifications requièrent un contexte sécurisé (HTTPS ou http://localhost). Si vous utilisez 127.0.0.1, merci d\'ouvrir plutôt : http://localhost:3001');
+        alert('Les notifications requièrent un contexte sécurisé (HTTPS ou http://localhost).');
       }
 
-      // Safe cross-browser request function
       const requestPerm = () => {
         return new Promise((resolve) => {
           try {
-            // Some browsers require callback syntax, others return Promise
             const promise = Notification.requestPermission(resolve);
             if (promise && typeof promise.then === 'function') {
               promise.then(resolve);
             }
           } catch (err) {
-            console.error('[Notifications] Safe request permission failed:', err);
             resolve(Notification.permission);
           }
         });
       };
 
       if (Notification.permission === 'granted') {
-        state.desktopNotificationsEnabled = true;
+        syncDesktopNotifications(true);
         showTestNotification();
       } else if (Notification.permission === 'default') {
-        console.log('[Notifications] Requesting permission...');
         const permission = await requestPerm();
-        console.log('[Notifications] Permission response:', permission);
-        
         if (permission === 'granted') {
-          state.desktopNotificationsEnabled = true;
+          syncDesktopNotifications(true);
           showTestNotification();
         } else {
-          e.target.checked = false;
-          state.desktopNotificationsEnabled = false;
+          syncDesktopNotifications(false);
           alert(`Permissions de notification : ${permission}.`);
         }
       } else {
-        // Permission is 'denied'
-        e.target.checked = false;
-        state.desktopNotificationsEnabled = false;
-        alert('Notifications bloquées ou refusées dans les paramètres de votre navigateur. Veuillez cliquer sur l\'icône de cadenas 🔒 à gauche de l\'URL pour réactiver "Autoriser".');
+        syncDesktopNotifications(false);
+        alert('Notifications bloquées dans les paramètres de votre navigateur. Veuillez réactiver les autorisations.');
       }
     } else {
-      state.desktopNotificationsEnabled = false;
-      console.log('[Notifications] Toggle unchecked.');
+      syncDesktopNotifications(false);
     }
-    
-    localStorage.setItem('wiseBorg_desktopNotifications', state.desktopNotificationsEnabled);
-  });
+  };
 
-  // Sorting Tabs
-  el.sortBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      el.sortBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.sort = btn.getAttribute('data-sort');
-      renderDeals();
+  if (el.toggleDesktop) el.toggleDesktop.addEventListener('change', handleDesktopChange);
+  if (el.toggleDesktopHeader) el.toggleDesktopHeader.addEventListener('change', handleDesktopChange);
+
+  // Sidebar collapsible filters
+  if (el.toggleFiltersCollapse) {
+    el.toggleFiltersCollapse.addEventListener('click', () => {
+      if (el.filtersContainer) {
+        el.filtersContainer.classList.toggle('dropdown-hidden');
+      }
+      const chevron = el.toggleFiltersCollapse.querySelector('.chevron');
+      if (chevron) {
+        chevron.style.transform = chevron.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
     });
-  });
+  }
 }
 
 // Handle text search input for item autocomplete
@@ -394,8 +536,8 @@ async function triggerManualScan() {
     el.itemSearchInput.disabled = true;
     
     // Add pulsing scanner effect to search field
-    el.itemSearchInput.style.borderColor = 'var(--tenno-teal)';
-    el.itemSearchInput.style.boxShadow = 'var(--glow-teal)';
+    el.itemSearchInput.style.borderColor = 'var(--orokin-gold)';
+    el.itemSearchInput.style.boxShadow = '0 0 10px var(--orokin-gold-glow)';
 
     const res = await fetch('/api/scan', {
       method: 'POST',
@@ -409,7 +551,7 @@ async function triggerManualScan() {
     // Flash success
     setTimeout(() => {
       el.btnManualScan.disabled = false;
-      el.btnManualScan.querySelector('.btn-text').textContent = 'SCANNER';
+      el.btnManualScan.querySelector('.btn-text').textContent = 'SCAN';
       el.itemSearchInput.disabled = false;
       el.itemSearchInput.value = '';
       el.itemSearchInput.style.borderColor = '';
@@ -420,7 +562,7 @@ async function triggerManualScan() {
   } catch (err) {
     console.error('Manual scan failed:', err);
     el.btnManualScan.disabled = false;
-    el.btnManualScan.querySelector('.btn-text').textContent = 'SCANNER';
+    el.btnManualScan.querySelector('.btn-text').textContent = 'SCAN';
     el.itemSearchInput.disabled = false;
   }
 }
@@ -432,30 +574,38 @@ async function pollStatus() {
     const status = await res.json();
 
     // Update headers and statistics counters
-    el.statRequests.textContent = status.requestsMade;
-    el.statQueue.textContent = status.queueLength;
-    el.statCache.textContent = status.cacheSize;
-    el.statDealsFound.textContent = status.dealsFoundCount;
+    if (el.statRequests) el.statRequests.textContent = status.requestsMade;
+    if (el.statQueue) el.statQueue.textContent = status.queueLength;
+    if (el.statCache) el.statCache.textContent = status.cacheSize;
+    if (el.statDealsFound) el.statDealsFound.textContent = status.dealsFoundCount;
 
     // Rate Limit active banner changes
     if (status.rateLimited) {
-      el.scannerPulse.className = 'status-pulse rate-limited';
+      if (el.scannerPulse) el.scannerPulse.className = 'status-card-dot rate-limited';
       const sLeft = Math.ceil(status.cooldownMsLeft / 1000);
-      el.scannerStatusLabel.textContent = `PAUSE API (${sLeft}s)`;
-      el.scannerStatusLabel.style.color = 'var(--danger-red)';
+      if (el.scannerStatusLabel) {
+        el.scannerStatusLabel.textContent = `PAUSE API (${sLeft}s)`;
+        el.scannerStatusLabel.style.color = 'var(--danger-red)';
+      }
     } else if (status.queueLength > 0) {
-      el.scannerPulse.className = 'status-pulse syncing';
-      el.scannerStatusLabel.textContent = `SCAN EN COURS (${status.queueLength})`;
-      el.scannerStatusLabel.style.color = '#ff9800';
+      if (el.scannerPulse) el.scannerPulse.className = 'status-card-dot syncing';
+      if (el.scannerStatusLabel) {
+        el.scannerStatusLabel.textContent = `SCAN EN COURS (${status.queueLength})`;
+        el.scannerStatusLabel.style.color = '#ff9800';
+      }
     } else {
-      el.scannerPulse.className = 'status-pulse';
-      el.scannerStatusLabel.textContent = `ACTIF // À JOUR`;
-      el.scannerStatusLabel.style.color = 'var(--tenno-teal)';
+      if (el.scannerPulse) el.scannerPulse.className = 'status-card-dot';
+      if (el.scannerStatusLabel) {
+        el.scannerStatusLabel.textContent = `ACTIF // À JOUR`;
+        el.scannerStatusLabel.style.color = 'var(--tenno-teal)';
+      }
     }
   } catch (e) {
-    el.scannerPulse.className = 'status-pulse rate-limited';
-    el.scannerStatusLabel.textContent = 'ERREUR RESEAU';
-    el.scannerStatusLabel.style.color = 'var(--danger-red)';
+    if (el.scannerPulse) el.scannerPulse.className = 'status-card-dot rate-limited';
+    if (el.scannerStatusLabel) {
+      el.scannerStatusLabel.textContent = 'ERREUR RESEAU';
+      el.scannerStatusLabel.style.color = 'var(--danger-red)';
+    }
   }
 }
 
@@ -467,7 +617,8 @@ function matchesFilters(deal) {
   const searchStr = state.filters.text;
   const passText = searchStr === '' || 
                    deal.name.toLowerCase().includes(searchStr) || 
-                   (deal.variantName && deal.variantName.toLowerCase().includes(searchStr));
+                   (deal.variantName && deal.variantName.toLowerCase().includes(searchStr)) ||
+                   (deal.user.ingameName && deal.user.ingameName.toLowerCase().includes(searchStr));
                    
   let passRank = true;
   if (deal.rank !== undefined && deal.rank !== null) {
@@ -478,8 +629,33 @@ function matchesFilters(deal) {
       passRank = isMaxed;
     }
   }
+
+  // Pill rarity check
+  let passRarity = true;
+  if (state.filters.rarity && state.filters.rarity !== 'all') {
+    const dealRarity = getDealRarity(deal.discount);
+    passRarity = dealRarity === state.filters.rarity;
+  }
+
+  // Category tags filter
+  let passCategory = true;
+  if (state.filters.category && state.filters.category !== 'all') {
+    const nameLower = deal.name.toLowerCase();
+    if (state.filters.category === 'prime') {
+      passCategory = nameLower.includes('prime');
+    } else if (state.filters.category === 'arme') {
+      passCategory = nameLower.includes('vandal') || nameLower.includes('wraith') || nameLower.includes('prisma') || nameLower.includes('mara') || nameLower.includes('kuva') || nameLower.includes('tenet') || nameLower.includes('cobra') || nameLower.includes('velocitus') || nameLower.includes('lecta') || nameLower.includes('silva') || nameLower.includes('ankyr') || nameLower.includes('boeg') || nameLower.includes('bo ') || nameLower.includes('boltor') || nameLower.includes('burston') || nameLower.includes('cernos') || nameLower.includes('dakra') || nameLower.includes('fang') || nameLower.includes('glaive') || nameLower.includes('hikou') || nameLower.includes('karr') || nameLower.includes('knell') || nameLower.includes('latron') || nameLower.includes('lex') || nameLower.includes('marelok') || nameLower.includes('nikana') || nameLower.includes('orthos') || nameLower.includes('paris') || nameLower.includes('pyrana') || nameLower.includes('reaper') || nameLower.includes('scindo') || nameLower.includes('sicarus') || nameLower.includes('soma') || nameLower.includes('spira') || nameLower.includes('sybaris') || nameLower.includes('tiberon') || nameLower.includes('tigris') || nameLower.includes('vasto') || nameLower.includes('vectis') || nameLower.includes('cestra') || nameLower.includes('akboltor') || nameLower.includes('akbronco') || nameLower.includes('aklex') || nameLower.includes('akstiletto') || nameLower.includes('akvasto') || nameLower.includes('braton') || nameLower.includes('bronco') || nameLower.includes('destreza') || nameLower.includes('dual kamas') || nameLower.includes('euphona') || nameLower.includes('fragor') || nameLower.includes('galatine') || nameLower.includes('helios') || nameLower.includes('karyst') || nameLower.includes('kronen') || nameLower.includes('nami skyla') || nameLower.includes('nikondi') || nameLower.includes('panthera') || nameLower.includes('rubico') || nameLower.includes('sarpa') || nameLower.includes('spared') || nameLower.includes('stradavar') || nameLower.includes('tatsu') || nameLower.includes('tekko') || nameLower.includes('venka') || nameLower.includes('zakti') || nameLower.includes('zhuge');
+    } else if (state.filters.category === 'warframe') {
+      passCategory = (nameLower.includes('chassis') || nameLower.includes('systèmes') || nameLower.includes('neuroptiques') || nameLower.includes('systems') || nameLower.includes('neuroptics') || nameLower.includes('blueprint') || nameLower.includes('schéma')) &&
+        (nameLower.includes('ash') || nameLower.includes('atlas') || nameLower.includes('banshee') || nameLower.includes('chroma') || nameLower.includes('ember') || nameLower.includes('equinox') || nameLower.includes('frost') || nameLower.includes('gara') || nameLower.includes('harrow') || nameLower.includes('hydroid') || nameLower.includes('inaros') || nameLower.includes('ivara') || nameLower.includes('khora') || nameLower.includes('limbo') || nameLower.includes('loki') || nameLower.includes('mag') || nameLower.includes('mesa') || nameLower.includes('mirage') || nameLower.includes('nekros') || nameLower.includes('nezha') || nameLower.includes('nidus') || nameLower.includes('nova') || nameLower.includes('nyx') || nameLower.includes('oberon') || nameLower.includes('octavia') || nameLower.includes('protea') || nameLower.includes('revenant') || nameLower.includes('rhino') || nameLower.includes('saryn') || nameLower.includes('titania') || nameLower.includes('trinity') || nameLower.includes('valkyr') || nameLower.includes('vauban') || nameLower.includes('volt') || nameLower.includes('wisp') || nameLower.includes('wukong') || nameLower.includes('xaku') || nameLower.includes('zephyr'));
+    } else if (state.filters.category === 'mod') {
+      passCategory = deal.subtype === 'mod' || nameLower.includes('rank') || nameLower.includes('rivens') || nameLower.includes('primé') || nameLower.includes('galvanisé') || nameLower.includes('transmuté');
+    } else if (state.filters.category === 'accessoire') {
+      passCategory = deal.subtype === 'arcane' || nameLower.includes('arcane') || nameLower.includes('empreinte') || nameLower.includes('imprint') || nameLower.includes('relic') || nameLower.includes('relique') || nameLower.includes('lentille') || nameLower.includes('lens');
+    }
+  }
                    
-  return passDiscount && passProfit && passText && passRank;
+  return passDiscount && passProfit && passText && passRank && passRarity && passCategory;
 }
 
 // Show a browser/desktop notification for a newly spotted deal
@@ -587,7 +763,7 @@ function getItemFullTitle(deal) {
   return title;
 }
 
-// Render filtered and sorted deal cards to the UI Grid with DOM Reconciliation (Flicker-Free)
+// Render filtered and sorted deal cards with dynamic Spotlight featured top-card
 function renderDeals() {
   // 1. Filter local list based on state controls
   const filtered = state.deals.filter(matchesFilters);
@@ -606,161 +782,241 @@ function renderDeals() {
     return 0;
   });
 
-  // Update count badge
-  el.dealsCount.textContent = filtered.length;
-
-  // DOM Reconciliation logic to eliminate layout jumps & image reloads
-  const existingCards = el.dealsGrid.querySelectorAll('.deal-card');
-  const existingCardMap = new Map();
-  existingCards.forEach(card => {
-    const id = card.getAttribute('data-id');
-    if (id) existingCardMap.set(id, card);
-  });
-
   if (filtered.length === 0) {
-    // Remove all old cards
-    existingCards.forEach(card => card.remove());
+    // Hide featured container and show full empty state
+    if (el.featuredDealSection) el.featuredDealSection.style.display = 'none';
     el.emptyState.style.display = 'flex';
+    
+    // Wipe deals list grid clean
+    const existingCards = el.dealsGrid.querySelectorAll('.compact-deal-card');
+    existingCards.forEach(c => c.remove());
     return;
   }
 
   el.emptyState.style.display = 'none';
 
-  // Build and update cards in the correct sorted order
-  filtered.forEach(deal => {
+  // 3. Render Spotlight (featured #1 item in list)
+  const featuredDeal = filtered[0];
+  renderFeaturedDeal(featuredDeal);
+
+  // 4. Render Grid items (all subsequent items: index 1 and onwards)
+  const gridDeals = filtered.slice(1);
+  renderGridDeals(gridDeals);
+}
+
+// Render the featured spotlight top card
+function renderFeaturedDeal(deal) {
+  const rarity = getDealRarity(deal.discount);
+  const imageUrl = deal.thumb 
+    ? `https://warframe.market/static/assets/${deal.thumb}` 
+    : 'https://warframe.market/static/assets/items/images/en/thumbs/general_item.png';
+  const fullTitle = getItemFullTitle(deal);
+  const timeAgo = formatTimeAgo(deal.spottedAt);
+  
+  // Decide badge label title based on sort selection
+  let badgeLabel = "⭐ MEILLEURE AFFAIRE";
+  if (state.sort === 'recency') {
+    badgeLabel = "⭐ OFFRE RÉCENTE";
+  } else if (state.sort === 'margin') {
+    badgeLabel = "⭐ PLUS GROS PROFIT";
+  }
+  
+  const cardHtml = `
+    <div class="featured-deal-card card-${rarity} sort-${state.sort}" data-id="${deal.id}">
+      <span class="featured-badge-tag">${badgeLabel}</span>
+      <div class="featured-card-layout">
+        <!-- Showcase Image -->
+        <div class="featured-left-image">
+          <img class="featured-item-thumb" src="${imageUrl}" alt="${deal.name}" onerror="this.src='https://warframe.market/static/assets/items/images/en/thumbs/general_item.png'">
+        </div>
+        
+        <!-- Showcase details columns -->
+        <div class="featured-details">
+          <div class="featured-top-metadata">
+            <span class="featured-rarity-badge badge-${rarity}">${rarity.toUpperCase()} DEAL</span>
+            ${deal.reqMasteryRank ? `<span class="compact-badge-mr">MR ${deal.reqMasteryRank}</span>` : ''}
+            <span class="featured-spotted-time">${timeAgo}</span>
+          </div>
+          
+          <h1 class="featured-title">${fullTitle}</h1>
+          
+          <div class="featured-seller-row">
+            <span class="seller-dot"></span>
+            <span class="seller-txt">Vendeur: <strong>${deal.user.ingameName}</strong></span>
+            <span class="seller-reputation-gold">&#9733; ${deal.user.reputation}</span>
+          </div>
+          
+          <!-- Key stats row -->
+          <div class="featured-stats-row">
+            <div class="featured-stat-box">
+              <span class="feat-lbl">Remise</span>
+              <span class="feat-val discount">-${deal.discount}%</span>
+            </div>
+            
+            <div class="featured-stat-box">
+              <span class="feat-lbl">Prix d'Achat</span>
+              <span class="feat-val">${deal.price} <span class="plat-suffix">plat</span></span>
+            </div>
+            
+            <div class="featured-stat-box">
+              <span class="feat-lbl">Prix du Marché</span>
+              <span class="feat-val">${deal.typicalPrice} <span class="plat-suffix">plat</span></span>
+            </div>
+            
+            <div class="featured-stat-box">
+              <span class="feat-lbl">Profit Estimé</span>
+              <span class="feat-val profit">+${deal.margin} <span class="plat-suffix">plat</span></span>
+            </div>
+          </div>
+          
+          <!-- Fusion stars arcane guides -->
+          ${deal.amberStars !== undefined ? `
+            <div class="fusion-tip text-gold">
+              Note: Étoiles d'Ambre: ${deal.amberStars} | Étoiles de Cyan: ${deal.cyanStars}
+            </div>
+          ` : ''}
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="featured-actions">
+          <button class="btn-feat-primary btn-whisper-copy" data-whisper="${deal.copyWhisper.replace(/"/g, '&quot;')}">
+            📋 COPIER LE WHISPER
+          </button>
+          <a class="btn-feat-secondary" href="https://warframe.market/items/${deal.slug}" target="_blank" rel="noopener">
+            Voir la fiche item
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  el.featuredDealSection.innerHTML = cardHtml;
+  el.featuredDealSection.style.display = 'block';
+  
+  // Bind click elements
+  const featuredCard = el.featuredDealSection.querySelector('.featured-deal-card');
+  const whisperBtn = featuredCard.querySelector('.btn-whisper-copy');
+  
+  if (whisperBtn) {
+    whisperBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const whisperText = whisperBtn.getAttribute('data-whisper');
+      copyWhisper(event, whisperText, whisperBtn);
+    });
+  }
+  
+  // Card click auto-copies whisper and opens browser tab
+  featuredCard.addEventListener('click', (event) => {
+    if (event.target.closest('.btn-whisper-copy') || event.target.closest('.btn-feat-secondary')) return;
+    const whisperText = whisperBtn.getAttribute('data-whisper');
+    copyWhisper(null, whisperText, whisperBtn);
+    window.open(`https://warframe.market/items/${deal.slug}`, '_blank', 'noopener');
+  });
+}
+
+// Render Secondary deals grid with DOM Reconciliation
+function renderGridDeals(dealsList) {
+  const existingCards = el.dealsGrid.querySelectorAll('.compact-deal-card');
+  const existingCardMap = new Map();
+  existingCards.forEach(card => {
+    const id = card.getAttribute('data-id');
+    if (id) existingCardMap.set(id, card);
+  });
+  
+  // Remove old grid elements
+  existingCardMap.forEach((card, id) => {
+    const found = dealsList.some(d => d.id === id);
+    if (!found) card.remove();
+  });
+  
+  dealsList.forEach(deal => {
     const rarity = getDealRarity(deal.discount);
     const imageUrl = deal.thumb 
       ? `https://warframe.market/static/assets/${deal.thumb}` 
       : 'https://warframe.market/static/assets/items/images/en/thumbs/general_item.png';
-      
-    const fullTitle = getItemFullTitle(deal);
     const timeAgo = formatTimeAgo(deal.spottedAt);
     
-    // Check if card already exists
     let card = existingCardMap.get(deal.id);
-    
     if (card) {
-      // Card exists! Update dynamic elements in-place to avoid flicker
       existingCardMap.delete(deal.id);
       
-      // Update dynamic elements
-      const timeEl = card.querySelector('.spotted-time');
+      // Update values in-place
+      const timeEl = card.querySelector('.card-spotted-ago');
       if (timeEl) timeEl.textContent = timeAgo;
       
-      const priceValEl = card.querySelector('.stat-row-price-sale');
-      if (priceValEl) priceValEl.innerHTML = `${deal.price} <span class="plat-suffix">plat</span>`;
+      const venteEl = card.querySelector('.c-val.vente');
+      if (venteEl) venteEl.textContent = `${deal.price} plat`;
       
-      const marketValEl = card.querySelector('.stat-row-price-market');
-      if (marketValEl) marketValEl.innerHTML = `${deal.typicalPrice} <span class="plat-suffix">plat</span>`;
+      const marketEl = card.querySelector('.c-val.marche');
+      if (marketEl) marketEl.textContent = `${deal.typicalPrice} plat`;
       
-      const marginValEl = card.querySelector('.stat-row-price-margin');
-      if (marginValEl) marginValEl.innerHTML = `+${deal.margin} <span class="plat-suffix">plat</span>`;
+      const marginEl = card.querySelector('.c-val.benefice');
+      if (marginEl) marginEl.textContent = `+${deal.margin} plat`;
       
-      const discountValEl = card.querySelector('.discount-badge-val');
-      if (discountValEl) discountValEl.textContent = `-${deal.discount}%`;
-      
-      const titleEl = card.querySelector('.item-title');
-      if (titleEl) titleEl.textContent = fullTitle;
-      
-      const whisperBtn = card.querySelector('.btn-whisper-copy');
+      const whisperBtn = card.querySelector('.btn-compact-copy');
       if (whisperBtn) {
         whisperBtn.setAttribute('data-whisper', deal.copyWhisper);
       }
       
-      // Update Mastery Rank badge dynamically in-place
-      let headerLeftEl = card.querySelector('.header-left-group');
-      if (!headerLeftEl) {
-        // Fallback: if old HTML structure exists in DOM, wrap rarity tag
-        const rarityTag = card.querySelector('.deal-rarity-tag');
-        if (rarityTag) {
-          headerLeftEl = document.createElement('div');
-          headerLeftEl.className = 'header-left-group';
-          rarityTag.parentNode.insertBefore(headerLeftEl, rarityTag);
-          headerLeftEl.appendChild(rarityTag);
-        }
-      }
-      if (headerLeftEl) {
-        let mrBadge = headerLeftEl.querySelector('.badge-mr');
-        if (deal.reqMasteryRank) {
-          if (mrBadge) {
-            mrBadge.textContent = `MR ${deal.reqMasteryRank}`;
-          } else {
-            mrBadge = document.createElement('span');
-            mrBadge.className = 'badge-mr';
-            mrBadge.textContent = `MR ${deal.reqMasteryRank}`;
-            headerLeftEl.appendChild(mrBadge);
-          }
-        } else if (mrBadge) {
-          mrBadge.remove();
-        }
-      }
-      
-      // Ensure it is styled properly if rarity changed
-      card.className = `deal-card card-${rarity}`;
-      
-      // Append it to container (this moves it to the correct sorted order automatically!)
+      // Keep sorted order correctly aligned
       el.dealsGrid.appendChild(card);
     } else {
-      // Create a brand new card as an anchor tag
-      card = document.createElement('a');
-      card.href = `https://warframe.market/items/${deal.slug}`;
-      card.target = '_blank';
-      card.rel = 'noopener';
-      card.className = `deal-card card-${rarity}`;
+      card = document.createElement('div');
+      card.className = `compact-deal-card card-${rarity}`;
       card.setAttribute('data-id', deal.id);
       
-      // Construct beautiful HTML
       card.innerHTML = `
-        <div class="card-border-top"></div>
-        <div class="card-layout">
-          <!-- Left Part: Large Image & Seller badge -->
-          <div class="card-left">
-            <div class="image-wrapper">
-              <img class="item-image" src="${imageUrl}" alt="${deal.name}" onerror="this.src='https://warframe.market/static/assets/items/images/en/thumbs/secura_dual_cestra.3d47a4ec6675ff774bb0da9b16c53e0e.128x128.png'">
-              <span class="discount-badge-val">-${deal.discount}%</span>
-            </div>
-            <div class="seller-info">
-              <span class="seller-status-dot dot-ingame"></span>
-              <span class="seller-name" title="${deal.user.ingameName}">${deal.user.ingameName}</span>
-              <span class="seller-rep" title="Reputation">&#9733; ${deal.user.reputation}</span>
-            </div>
+        <div class="card-top-row">
+          <span class="card-discount-tag">-${deal.discount}%</span>
+          <span class="card-rarity-pill ${rarity}">${rarity}</span>
+          <span class="card-spotted-ago">${timeAgo}</span>
+        </div>
+        
+        <div class="card-image-box">
+          <img src="${imageUrl}" alt="${deal.name}" onerror="this.src='https://warframe.market/static/assets/items/images/en/thumbs/general_item.png'">
+        </div>
+        
+        <div class="card-title-group">
+          <h3 class="card-item-name" title="${deal.name}">${deal.name}</h3>
+          <span class="card-rank-details">
+            ${deal.rank !== undefined && deal.rank !== null ? `Rank ${deal.rank}` : (deal.subtype ? deal.subtype : 'Objet')}
+            ${deal.reqMasteryRank ? `&bull; <span class="compact-badge-mr">MR ${deal.reqMasteryRank}</span>` : ''}
+          </span>
+        </div>
+        
+        <div class="card-seller-tag">
+          <span class="card-seller-dot"></span>
+          <span class="card-seller-name" title="${deal.user.ingameName}">${deal.user.ingameName}</span>
+          <span class="card-seller-rep">&#9733; ${deal.user.reputation}</span>
+        </div>
+        
+        <div class="card-prices-grid">
+          <div class="c-price-box">
+            <span class="c-lbl">Achat</span>
+            <span class="c-val vente">${deal.price} plat</span>
           </div>
-          
-          <!-- Right Part: Header & Stats Column -->
-          <div class="card-right">
-            <div class="card-header-row">
-              <div class="header-left-group">
-                <span class="deal-rarity-tag tag-${rarity}">${rarity.toUpperCase()} DEAL</span>
-                ${deal.reqMasteryRank ? `<span class="badge-mr">MR ${deal.reqMasteryRank}</span>` : ''}
-              </div>
-              <span class="spotted-time text-muted">${timeAgo}</span>
-            </div>
-            
-            <h3 class="item-title">${fullTitle}</h3>
-            
-            <div class="stats-column">
-              <div class="stat-row">
-                <span class="stat-label">Prix Vente</span>
-                <span class="stat-value text-green stat-row-price-sale">${deal.price} <span class="plat-suffix">plat</span></span>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">Prix Marché</span>
-                <span class="stat-value stat-row-price-market">${deal.typicalPrice} <span class="plat-suffix">plat</span></span>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">Bénéfice</span>
-                <span class="stat-value text-gold stat-row-price-margin">+${deal.margin} <span class="plat-suffix">plat</span></span>
-              </div>
-            </div>
+          <div class="c-price-box">
+            <span class="c-lbl">Marché</span>
+            <span class="c-val marche">${deal.typicalPrice} plat</span>
+          </div>
+          <div class="c-price-box">
+            <span class="c-lbl">Profit</span>
+            <span class="c-val benefice">+${deal.margin} plat</span>
           </div>
         </div>
-        <button class="btn-whisper-copy" data-whisper="${deal.copyWhisper.replace(/"/g, '&quot;')}">
-          📋 COPY WHISPER
+        
+        <button class="btn-compact-copy" data-whisper="${deal.copyWhisper.replace(/"/g, '&quot;')}">
+          Copier whisper
         </button>
       `;
       
-      // Setup event listener directly on the whisper button
-      const whisperBtn = card.querySelector('.btn-whisper-copy');
+      const whisperBtn = card.querySelector('.btn-compact-copy');
       if (whisperBtn) {
         whisperBtn.addEventListener('click', (event) => {
           event.preventDefault();
@@ -768,21 +1024,18 @@ function renderDeals() {
           const whisperText = whisperBtn.getAttribute('data-whisper');
           copyWhisper(event, whisperText, whisperBtn);
         });
-
-        // Auto-copy when clicking anywhere else on the card to access the page
-        card.addEventListener('click', (event) => {
-          if (event.target.closest('.btn-whisper-copy')) return;
-          const whisperText = whisperBtn.getAttribute('data-whisper');
-          copyWhisper(null, whisperText, whisperBtn);
-        });
       }
+      
+      card.addEventListener('click', (event) => {
+        if (event.target.closest('.btn-compact-copy')) return;
+        const whisperText = whisperBtn.getAttribute('data-whisper');
+        copyWhisper(null, whisperText, whisperBtn);
+        window.open(`https://warframe.market/items/${deal.slug}`, '_blank', 'noopener');
+      });
       
       el.dealsGrid.appendChild(card);
     }
   });
-
-  // Remove any leftover cards that are no longer in the filtered deals list
-  existingCardMap.forEach(card => card.remove());
 }
 
 // Format relative spotted timestamps
@@ -805,17 +1058,17 @@ async function copyWhisper(event, whisperText, button) {
     
     // Add success transition classes
     button.classList.add('copied');
+    const originalText = button.textContent;
     button.textContent = '📋 WHISPER COPIÉ !';
 
     // Play visual flash
     setTimeout(() => {
       button.classList.remove('copied');
-      button.textContent = '📋 COPY WHISPER';
-    }, 2000);
+      button.textContent = originalText;
+    }, 1800);
 
   } catch (err) {
     console.error('Clipboard copy failed:', err);
-    // Fallback prompt in case browser blocks clipboard API
     window.prompt("Copiez le whisper manuellement:", whisperText);
   }
 }

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WISE BORG // Deal Sniper</title>
+  <!-- Google Fonts for premium sci-fi typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      <!-- Logo Area -->
+      <div class="logo-area">
+        <svg class="logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 15L80 45L70 85L50 65L30 85L20 45L50 15Z" stroke="#cca152" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M50 35L65 50L50 65L35 50L50 35Z" fill="#cca152"/>
+          <path d="M50 15V35" stroke="#cca152" stroke-width="2"/>
+          <path d="M50 65V85" stroke="#cca152" stroke-width="2"/>
+        </svg>
+        <div class="logo-title">
+          <span class="title-main">WISE BORG</span>
+          <span class="title-sub">DEAL SNIPER</span>
+        </div>
+      </div>
+      
+      <!-- Filters Section -->
+      <div class="sidebar-section">
+        <div class="section-header" id="toggleFiltersCollapse">
+          <span>FILTRES</span>
+          <span class="chevron">&#9652;</span>
+        </div>
+        
+        <div class="filters-container" id="filtersContainer">
+          <!-- Rechercher item (manual scan input) -->
+          <div class="sidebar-control-group">
+            <label for="itemSearchInput">Rechercher un item...</label>
+            <div class="sidebar-search-container">
+              <input type="text" id="itemSearchInput" placeholder="Ex: Arcane Energize..." autocomplete="off">
+              <button id="btnManualScan" class="btn-sidebar-scan">
+                <span class="btn-text">SCAN</span>
+              </button>
+              <div id="autocompleteDropdown" class="autocomplete-dropdown dropdown-hidden"></div>
+            </div>
+          </div>
+          
+          <!-- Remise slider -->
+          <div class="sidebar-control-group">
+            <div class="slider-labels">
+              <span class="lbl-name">Remise minimum</span>
+              <span class="lbl-val" id="valDiscount">20%</span>
+            </div>
+            <input type="range" id="filterDiscount" min="15" max="80" value="20" step="5">
+          </div>
+          
+          <!-- Profit slider -->
+          <div class="sidebar-control-group">
+            <div class="slider-labels">
+              <span class="lbl-name">Profit minimum</span>
+              <span class="lbl-val" id="valProfit">10 plat</span>
+            </div>
+            <input type="range" id="filterProfit" min="2" max="50" value="10" step="1">
+          </div>
+          
+          <!-- Rarity pills selection -->
+          <div class="sidebar-control-group">
+            <label>Rareté</label>
+            <div class="rarity-pills-grid" id="rarityPillsGrid">
+              <button class="rarity-pill active" data-rarity="all">Toutes</button>
+              <button class="rarity-pill pill-common" data-rarity="common">Commune</button>
+              <button class="rarity-pill pill-uncommon" data-rarity="uncommon">Peu commune</button>
+              <button class="rarity-pill pill-rare" data-rarity="rare">Rare</button>
+              <button class="rarity-pill pill-epic" data-rarity="epic">Épique</button>
+              <button class="rarity-pill pill-legendary" data-rarity="legendary">Légendaire</button>
+            </div>
+          </div>
+          
+          <!-- Sort select in sidebar -->
+          <div class="sidebar-control-group">
+            <label for="sidebarSortSelect">Trier par</label>
+            <select id="sidebarSortSelect" class="sidebar-select">
+              <option value="discount">Meilleure affaire</option>
+              <option value="recency">Offre récente</option>
+              <option value="margin">Plus gros profit</option>
+            </select>
+          </div>
+
+          <!-- Rank filter select in sidebar -->
+          <div class="sidebar-control-group">
+            <label for="filterRank">Filtrer par Rangs</label>
+            <select id="filterRank" class="sidebar-select">
+              <option value="all">Tous les rangs</option>
+              <option value="rank0">Rang 0 uniquement</option>
+              <option value="maxed">Rang Max uniquement</option>
+            </select>
+          </div>
+          
+          <!-- Auto refresh toggle & speed -->
+          <div class="sidebar-control-group">
+            <div class="switch-row">
+              <span class="lbl-name">Actualisation auto</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggleAutoRefresh" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="slider-labels" style="margin-top: 6px;">
+              <span class="lbl-sub" id="valInterval">Toutes les 10 secondes</span>
+            </div>
+            <input type="range" id="filterInterval" min="2" max="60" value="10" step="1">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Alerts Section -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <span>ALERTES</span>
+          <svg class="bell-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px; height:16px;">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </div>
+        <div class="alerts-container">
+          <div class="switch-row">
+            <span class="lbl-name">Alertes Sonores</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggleSound">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <span class="lbl-name">Alertes Bureau</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggleDesktop">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Reset/Footer actions -->
+      <div class="sidebar-footer">
+        <button id="btnResetFilters" class="btn-reset-all">
+          <svg class="reset-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          Réinitialiser les filtres
+        </button>
+        <button id="btnClearDeals" class="btn-clear-deals">
+          Effacer la Liste
+        </button>
+      </div>
+    </aside>
+    
+    <!-- Main Content Panel -->
+    <main class="main-content">
+      <!-- Top Header Bar -->
+      <header class="top-bar">
+        <!-- Search bar -->
+        <div class="search-deals-wrapper">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="filterText" placeholder="Rechercher un item ou un vendeur...">
+        </div>
+        
+        <!-- Status panels -->
+        <div class="top-status-cards">
+          <!-- Live tracker -->
+          <div class="status-card-box">
+            <span class="status-card-dot" id="scannerPulse"></span>
+            <div class="status-card-text">
+              <span class="card-title-main">EN DIRECT</span>
+              <span class="card-title-sub" id="scannerStatusLabel">Offres en temps réel</span>
+            </div>
+          </div>
+          
+          <!-- Desktop notifications panel -->
+          <div class="status-card-box alert-status-box">
+            <svg class="bell-status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <div class="status-card-text">
+              <span class="card-title-main" id="desktopAlertText">Alertes Désactivées</span>
+              <span class="card-title-sub">Notifications Bureau</span>
+            </div>
+            <label class="toggle-switch status-toggle">
+              <input type="checkbox" id="toggleDesktopHeader">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          
+          <!-- Dropdown Sorting -->
+          <div class="status-card-box sort-card-box">
+            <div class="status-card-text">
+              <span class="card-title-sub">Trier par</span>
+              <select id="sortSelect" class="header-sort-select">
+                <option value="discount">Meilleure affaire</option>
+                <option value="recency">Offre récente</option>
+                <option value="margin">Plus gros profit</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      <!-- Category tags -->
+      <div class="categories-row" id="categoriesRow">
+        <button class="category-tag active" data-category="all">Toutes</button>
+        <button class="category-tag" data-category="prime">Prime</button>
+        <button class="category-tag" data-category="arme">Arme</button>
+        <button class="category-tag" data-category="warframe">Warframe</button>
+        <button class="category-tag" data-category="mod">Mod</button>
+        <button class="category-tag" data-category="accessoire">Accessoire</button>
+      </div>
+      
+      <!-- Main Metrics dashboard cards -->
+      <section class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-icon-box api-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-number" id="statRequests">0</span>
+            <span class="metric-label">Requêtes API</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-icon-box queue-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-number" id="statQueue">0</span>
+            <span class="metric-label">En file</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-icon-box cache-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-number" id="statCache">0</span>
+            <span class="metric-label">Offres suivies</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-icon-box snipes-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              <polyline points="17 6 23 6 23 12"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-number text-gold" id="statDealsFound">0</span>
+            <span class="metric-label">Snipes today</span>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Big featured deal spotlight -->
+      <section class="featured-deal-section" id="featuredDealSection">
+        <!-- Generated Dynamically by app.js -->
+      </section>
+      
+      <!-- Secondary deals container -->
+      <section class="other-deals-section">
+        <div class="section-title-row">
+          <h2 class="section-subtitle">⚡ Autres offres intéressantes</h2>
+          <button id="btnManualRefresh" class="btn-refresh-deals">
+            <span>Rafraîchir</span>
+            <span class="refresh-spinner">&#x21BB;</span>
+          </button>
+        </div>
+        
+        <!-- Grid lists -->
+        <div class="deals-grid" id="dealsGrid">
+          <!-- Empty State (Shows when no deals are active) -->
+          <div class="empty-state" id="emptyState">
+            <div class="radar-scan">
+              <div class="radar-circle circle-1"></div>
+              <div class="radar-circle circle-2"></div>
+              <div class="radar-circle circle-3"></div>
+              <div class="radar-sweep"></div>
+              <div class="radar-center"></div>
+            </div>
+            <h3 class="empty-title">Recherche de Snipes en Cours...</h3>
+            <p class="empty-desc">
+              WISE BORG écoute le flux de Warframe.market pour attraper les prix anormalement bas.<br>
+              Les offres des personnes <strong class="text-teal">ONLINE IN GAME</strong> apparaîtront ici dès qu'une opportunité se présente.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Bottom countdown bar -->
+      <footer class="app-bottom-bar">
+        <div class="auto-refresh-countdown" id="autoRefreshCountdown">
+          ⚡ Actualisation auto dans <span id="countdownTimer">10</span>s
+        </div>
+        <div class="api-limit-status">
+          WISE BORG Sniper v1.1.0 &bull; Limit: 3 req/sec
+        </div>
+      </footer>
+    </main>
+  </div>
+  
+  <!-- Notification Audio element -->
+  <audio id="audioNotification" preload="auto"></audio>
+  <script src="app.js"></script>
+</body>
+</html>
