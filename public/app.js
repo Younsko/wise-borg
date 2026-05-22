@@ -768,6 +768,13 @@ function renderDeals() {
           const whisperText = whisperBtn.getAttribute('data-whisper');
           copyWhisper(event, whisperText, whisperBtn);
         });
+
+        // Auto-copy when clicking anywhere else on the card to access the page
+        card.addEventListener('click', (event) => {
+          if (event.target.closest('.btn-whisper-copy')) return;
+          const whisperText = whisperBtn.getAttribute('data-whisper');
+          copyWhisper(null, whisperText, whisperBtn);
+        });
       }
       
       el.dealsGrid.appendChild(card);
