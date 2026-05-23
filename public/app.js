@@ -684,6 +684,14 @@ function showDesktopNotification(deal) {
       
       notification.onclick = function(event) {
         event.preventDefault();
+        
+        // Auto-copy the trade whisper to the clipboard
+        if (deal.copyWhisper) {
+          navigator.clipboard.writeText(deal.copyWhisper).catch(err => {
+            console.error('Failed to auto-copy whisper from notification click:', err);
+          });
+        }
+        
         window.open(`https://warframe.market/items/${deal.slug}`, '_blank');
         notification.close();
       };
