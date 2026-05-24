@@ -78,8 +78,8 @@ app.use(express.json());
 
 const crypto = require('crypto');
 
-const AUTH_CODE = process.env.AUTH_CODE || "younskamuniverse";
-const AUTH_TOKEN = crypto.createHash('sha256').update(AUTH_CODE).digest('hex');
+const AUTH_CODE = process.env.AUTH_CODE;
+const AUTH_TOKEN = AUTH_CODE ? crypto.createHash('sha256').update(AUTH_CODE).digest('hex') : null;
 
 // Utility to parse cookies manually without dependencies
 function parseCookies(req) {
@@ -96,6 +96,11 @@ function parseCookies(req) {
 
 // Passcode Authentication middleware for web hosting (Render, Railway, etc.)
 app.use((req, res, next) => {
+  // If no AUTH_CODE environment variable is set (running locally), bypass authentication completely
+  if (!AUTH_CODE) {
+    return next();
+  }
+  
   req.cookies = parseCookies(req);
   
   // 1. Exclude public assets, login resources and authentication API endpoints from protection
@@ -134,6 +139,10 @@ app.use((req, res, next) => {
 
 // Endpoint POST /api/login to check passcode and set secure HttpOnly cookie
 app.post('/api/login', (req, res) => {
+  if (!AUTH_CODE) {
+    return res.json({ success: true, local: true });
+  }
+  
   const { code } = req.body;
   if (!code) {
     return res.status(400).json({ error: 'Code requis.' });
