@@ -1,0 +1,16 @@
+# WORLD-W9-PET10
+
+Asset Name: Mogul Mammoth (Legendary)
+Asset Type: World Pet
+Builder: Zero
+Container Form: n/a
+Current Owner: Zero
+Cycle Week: World 9
+Dependencies: N/A
+Notes: Shared by RTT + RTT: Anime.
+Priority: Medium
+Scope: World expansion
+Spec Summary: World 9 pet, Modern City theme.
+Status: Not Started
+Theme / Anime: Modern City
+Used By: RTT + RTT: Anime

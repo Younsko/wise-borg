@@ -83,17 +83,6 @@
             <input type="range" id="filterProfit" min="2" max="50" value="2" step="1">
           </div>
 
-          <!-- Temps max (Spotted time filter buttons) -->
-          <div class="sidebar-control-group">
-            <label>Temps max.</label>
-            <div class="time-filter-row" id="timeFilterRow">
-              <button class="time-btn" data-time="10">10s</button>
-              <button class="time-btn active" data-time="30">30s</button>
-              <button class="time-btn" data-time="60">1min</button>
-              <button class="time-btn" data-time="300">5min</button>
-            </div>
-          </div>
-
           <!-- Nom de vendeur -->
           <div class="sidebar-control-group">
             <label for="sellerSearchInput">Vendeur</label>
@@ -111,16 +100,16 @@
             </div>
           </div>
 
-          <!-- Manual Scan input hidden inside settings / toggleable -->
-          <div class="sidebar-control-group sidebar-scan-box">
-            <label for="itemSearchInput">Scanner manuellement</label>
-            <div class="sidebar-search-container">
-              <input type="text" id="itemSearchInput" placeholder="Scanner un item..." autocomplete="off">
-              <button id="btnManualScan" class="btn-sidebar-scan">SCAN</button>
-              <div id="autocompleteDropdown" class="autocomplete-dropdown dropdown-hidden"></div>
-            </div>
+          <!-- Rank filter select -->
+          <div class="sidebar-control-group">
+            <label for="filterRank">Filtrer par Rangs</label>
+            <select id="filterRank" class="sidebar-select">
+              <option value="all">Tous les rangs</option>
+              <option value="rank0">Rang 0 uniquement</option>
+              <option value="maxed">Rang Max uniquement</option>
+            </select>
           </div>
-          
+
           <!-- Auto refresh toggle & speed -->
           <div class="sidebar-control-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; margin-top: 4px;">
             <div class="switch-row">
@@ -135,23 +124,30 @@
             </div>
             <input type="range" id="filterInterval" min="2" max="60" value="10" step="1">
           </div>
-
-          <!-- Rank filter select -->
-          <div class="sidebar-control-group">
-            <label for="filterRank">Filtrer par Rangs</label>
-            <select id="filterRank" class="sidebar-select">
-              <option value="all">Tous les rangs</option>
-              <option value="rank0">Rang 0 uniquement</option>
-              <option value="maxed">Rang Max uniquement</option>
-            </select>
-          </div>
         </div>
       </div>
       
-      <!-- Audio alerts hidden config -->
-      <div style="display:none;">
-        <input type="checkbox" id="toggleSound" checked>
-        <input type="checkbox" id="toggleDesktop" checked>
+      <!-- Alerts & Sounds Section (Moved back to Left Sidebar) -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <span>ALERTES & SONS</span>
+        </div>
+        <div class="filters-container" style="padding-top: 10px; padding-bottom: 16px; gap: 12px;">
+          <div class="switch-row">
+            <span class="lbl-name">Alertes Sonores</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggleSound" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <span class="lbl-name">Alertes Bureau</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggleDesktop" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- Scanning Active radar widget -->
@@ -265,8 +261,8 @@
           <button class="preset-tab" data-tab="discount">
             TOUS
           </button>
-          <button class="preset-tab alert-tab" id="toggleDesktopHeaderTab" data-tab="alerts">
-            ALERTES <span class="alert-count-badge" id="desktopAlertBadge">OFF</span>
+          <button class="preset-tab alert-tab" id="btnOpenWatchlist" style="border-color: rgba(229, 185, 95, 0.3);">
+            <span class="tab-icon">⭐</span> MA WATCHLIST
           </button>
         </div>
 
@@ -323,49 +319,55 @@
         </div>
       </section>
       
-      <!-- Bottom countdown bar and API indicators (Hidden values mapped to elements for script sync) -->
+      <!-- Hidden bindings for script compatibility -->
       <span id="statQueue" style="display:none;">0</span>
       <span id="statCache" style="display:none;">0</span>
       <span id="countdownTimer" style="display:none;">10</span>
       <span id="scannerStatusLabel" style="display:none;">ACTIF</span>
       <span id="scannerPulse" style="display:none;"></span>
+      <input type="checkbox" id="toggleDesktopHeader" style="display:none;">
     </main>
   </div>
   
-  <!-- Global Status Footer Bar -->
+  <!-- Global Status Footer Bar (Cleaned Up & Simple) -->
   <footer class="global-status-bar">
     <div class="status-indicator">
-      <span class="status-dot online"></span>
-      <span class="status-label">CONNEXION <span class="status-sub">EN LIGNE</span></span>
+      <span class="status-label">WARDEALS // Warframe Sniper</span>
     </div>
     
-    <div class="status-indicator divider"></div>
-    
-    <div class="status-indicator">
-      <span class="status-dot server-dot"></span>
-      <span class="status-label">SERVEUR <span class="status-sub" id="serverRegionLabel">Europe</span></span>
-    </div>
-
-    <div class="status-indicator divider"></div>
-    
-    <div class="status-indicator">
-      <span class="status-label text-teal">LATENCE <span class="status-sub font-bold text-green" id="serverLatencyLabel">18 ms</span></span>
-    </div>
-
-    <div class="status-indicator divider"></div>
-    
-    <div class="status-indicator">
-      <span class="status-label">DERNIÈRE MÀJ <span class="status-sub" id="lastUpdatedLabel">il y a 2 s</span></span>
-    </div>
-
-    <div class="status-settings-btn" id="btnSettingsTrigger" title="Paramètres">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-      <span>PARAMÈTRES</span>
+    <div class="status-actions-right">
+      <!-- Premium Sun/Moon Theme Toggle -->
+      <button class="btn-theme-toggle" id="btnThemeToggle" title="Changer de thème">
+        <span class="theme-icon-sombre">🌙 Mode Sombre</span>
+        <span class="theme-icon-clair" style="display:none;">☀️ Mode Clair</span>
+      </button>
     </div>
   </footer>
+
+  <!-- Watchlist Modal (Liste d'alertes) -->
+  <div id="watchlistModal" class="modal-overlay modal-hidden">
+    <div class="modal-content glass-panel">
+      <div class="modal-header">
+        <h2 class="watchlist-modal-title">⭐ Liste de Surveillance (Watchlist)</h2>
+        <button id="btnCloseWatchlist" class="btn-close">&times;</button>
+      </div>
+      <p class="modal-desc">
+        Saisissez des objets spécifiques pour créer votre liste de surveillance. Si cette liste n'est pas vide, le sniper déclenchera des alertes sonores et des notifications système <strong>uniquement</strong> pour les objets figurant ci-dessous !
+      </p>
+      
+      <div class="watchlist-add-row">
+        <div class="sidebar-search-container" style="flex: 1;">
+          <input type="text" id="watchlistInput" placeholder="Ajouter un item (ex: Arcane Energize...)" autocomplete="off">
+          <div id="watchlistAutocomplete" class="autocomplete-dropdown dropdown-hidden"></div>
+        </div>
+        <button id="btnAddWatchlist" class="btn-add-watchlist">AJOUTER</button>
+      </div>
+      
+      <div class="watchlist-items-list" id="watchlistItemsList">
+        <!-- Generated Dynamically -->
+      </div>
+    </div>
+  </div>
   
   <!-- Notification Audio element -->
   <audio id="audioNotification" preload="auto"></audio>

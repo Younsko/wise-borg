@@ -4,10 +4,11 @@
 
 // Application State
 const state = {
-  items: [],              // All tradable items for manual scan autocomplete
+  items: [],              // All tradable items for manual autocomplete
   deals: [],              // Currently spotted deals from server
   seenDealIds: new Set(), // Set of deal IDs we've already notified about
   selectedItem: null,     // Currently selected item for manual scan
+  watchlist: JSON.parse(localStorage.getItem('wardeals_watchlist') || '[]'), // Watchlist objects: [ { name, slug } ]
   filters: {
     discount: 10,
     profit: 2,
@@ -15,7 +16,6 @@ const state = {
     rank: 'all',
     rarity: 'all',        // 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
     category: 'all',      // 'all' | 'prime' | 'arme' | 'warframe' | 'mod' | 'accessoire'
-    tempsMax: 30,         // default 30 seconds
     sellerName: '',
     masquerVus: false
   },
@@ -106,7 +106,10 @@ const el = {
   toggleAutoRefresh: document.getElementById('toggleAutoRefresh'),
   toggleMasquerVus: document.getElementById('toggleMasquerVus'),
   sellerSearchInput: document.getElementById('sellerSearchInput'),
-  timeFilterRow: document.getElementById('timeFilterRow'),
+
+  // Moved Sidebar Audio Toggles
+  toggleSound: document.getElementById('toggleSound'),
+  toggleDesktop: document.getElementById('toggleDesktop'),
 
   // Search Sync
   filterText: document.getElementById('filterText'),
@@ -115,7 +118,6 @@ const el = {
   // Preset Navigation
   presetTabs: document.getElementById('presetTabs'),
   sortSelect: document.getElementById('sortSelect'),
-  desktopAlertBadge: document.getElementById('desktopAlertBadge'),
 
   // Dynamic Content Containers
   dealsGrid: document.getElementById('dealsGrid'),
@@ -126,7 +128,6 @@ const el = {
 
   // Footer bar metadata
   lastUpdatedLabel: document.getElementById('lastUpdatedLabel'),
-  serverLatencyLabel: document.getElementById('serverLatencyLabel'),
 
   // Reset and Triggers
   btnResetFilters: document.getElementById('btnResetFilters'),
@@ -155,17 +156,20 @@ function startCountdownTimer() {
 // Initialize Application
 async function init() {
   setupEventListeners();
+  setupWatchlistAndTheme();
   
   // Load settings from localStorage
   const savedSound = localStorage.getItem('wardeals_soundEnabled');
   if (savedSound !== null) {
     state.soundEnabled = savedSound === 'true';
+    if (el.toggleSound) el.toggleSound.checked = state.soundEnabled;
   }
   
   const savedDesktop = localStorage.getItem('wardeals_desktopNotifications');
   if (savedDesktop !== null) {
     const isEnabled = savedDesktop === 'true';
-    syncDesktopNotifications(isEnabled);
+    state.desktopNotificationsEnabled = isEnabled;
+    if (el.toggleDesktop) el.toggleDesktop.checked = isEnabled;
   }
 
   await fetchItemsList();
@@ -183,7 +187,7 @@ async function init() {
     }
   });
 
-  // Dynamic latency and time updater
+  // Dynamic status updates
   setInterval(() => {
     if (el.lastUpdatedLabel) {
       const randSec = Math.floor(Math.random() * 3) + 1;
@@ -203,16 +207,6 @@ async function fetchItemsList() {
   }
 }
 
-// Sync desktop notification settings
-function syncDesktopNotifications(checked) {
-  state.desktopNotificationsEnabled = checked;
-  if (el.desktopAlertBadge) {
-    el.desktopAlertBadge.textContent = checked ? "ACTIF" : "OFF";
-    el.desktopAlertBadge.className = checked ? "alert-count-badge active" : "alert-count-badge";
-  }
-  localStorage.setItem('wardeals_desktopNotifications', checked ? 'true' : 'false');
-}
-
 // Synchronize Sorting selection dropdowns and presets
 function syncSort(val) {
   state.sort = val;
@@ -224,7 +218,7 @@ function syncSort(val) {
       const tabType = tab.getAttribute('data-tab');
       if (tabType === val) {
         tab.classList.add('active');
-      } else if (tabType !== 'alerts') {
+      } else {
         tab.classList.remove('active');
       }
     });
@@ -319,19 +313,12 @@ function setupEventListeners() {
   // Quick Navigation Presets tabs
   if (el.presetTabs) {
     el.presetTabs.querySelectorAll('.preset-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const tabType = tab.getAttribute('data-tab');
-        
-        if (tabType === 'alerts') {
-          // Toggle Alert notifications
-          const isEnabled = !state.desktopNotificationsEnabled;
-          syncDesktopNotifications(isEnabled);
-          if (isEnabled) showTestNotification();
-          return;
-        }
-        
-        syncSort(tabType);
-      });
+      const tabType = tab.getAttribute('data-tab');
+      if (tabType) {
+        tab.addEventListener('click', () => {
+          syncSort(tabType);
+        });
+      }
     });
   }
 
@@ -343,18 +330,6 @@ function setupEventListeners() {
         pillsGrid.querySelectorAll('.rarity-letter').forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
         state.filters.rarity = pill.getAttribute('data-rarity');
-        renderDeals();
-      });
-    });
-  }
-
-  // "Temps max" selection triggers
-  if (el.timeFilterRow) {
-    el.timeFilterRow.querySelectorAll('.time-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        el.timeFilterRow.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.filters.tempsMax = parseInt(btn.getAttribute('data-time'));
         renderDeals();
       });
     });
@@ -384,7 +359,6 @@ function setupEventListeners() {
       state.filters.text = '';
       state.filters.rank = 'all';
       state.filters.rarity = 'all';
-      state.filters.tempsMax = 30;
       state.filters.sellerName = '';
       state.filters.masquerVus = false;
       
@@ -404,11 +378,6 @@ function setupEventListeners() {
         pillsGrid.querySelectorAll('.rarity-letter').forEach(p => p.classList.remove('active'));
         const defaultPill = pillsGrid.querySelector('[data-rarity="all"]');
         if (defaultPill) defaultPill.classList.add('active');
-      }
-      if (el.timeFilterRow) {
-        el.timeFilterRow.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-        const defaultTime = el.timeFilterRow.querySelector('[data-time="30"]');
-        if (defaultTime) defaultTime.classList.add('active');
       }
       
       renderDeals();
@@ -447,6 +416,203 @@ function setupEventListeners() {
         }, 800);
       }
     });
+  }
+
+  // Moved Sidebar Alert triggers
+  if (el.toggleSound) {
+    el.toggleSound.addEventListener('change', (e) => {
+      state.soundEnabled = e.target.checked;
+      localStorage.setItem('wardeals_soundEnabled', state.soundEnabled);
+    });
+  }
+
+  if (el.toggleDesktop) {
+    el.toggleDesktop.addEventListener('change', async (e) => {
+      const checked = e.target.checked;
+      if (checked) {
+        if (typeof Notification === 'undefined') {
+          alert('Notifications non supportées.');
+          el.toggleDesktop.checked = false;
+          return;
+        }
+        if (Notification.permission !== 'granted') {
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') {
+            el.toggleDesktop.checked = false;
+            return;
+          }
+        }
+        showTestNotification();
+      }
+      state.desktopNotificationsEnabled = checked;
+      localStorage.setItem('wardeals_desktopNotifications', checked ? 'true' : 'false');
+    });
+  }
+}
+
+// setup Watchlist and Light Mode theme logic
+function setupWatchlistAndTheme() {
+  // Theme load
+  const savedTheme = localStorage.getItem('wardeals_theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-theme');
+    updateThemeToggleUI(true);
+  }
+  
+  const btnThemeToggle = document.getElementById('btnThemeToggle');
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', () => {
+      const isLight = document.body.classList.toggle('light-theme');
+      localStorage.setItem('wardeals_theme', isLight ? 'light' : 'dark');
+      updateThemeToggleUI(isLight);
+    });
+  }
+
+  // Watchlist modal toggles
+  const watchlistModal = document.getElementById('watchlistModal');
+  const btnOpenWatchlist = document.getElementById('btnOpenWatchlist');
+  const btnCloseWatchlist = document.getElementById('btnCloseWatchlist');
+
+  if (btnOpenWatchlist && watchlistModal) {
+    btnOpenWatchlist.addEventListener('click', (e) => {
+      e.preventDefault();
+      watchlistModal.classList.remove('modal-hidden');
+    });
+  }
+
+  if (btnCloseWatchlist && watchlistModal) {
+    btnCloseWatchlist.addEventListener('click', () => {
+      watchlistModal.classList.add('modal-hidden');
+    });
+    watchlistModal.addEventListener('click', (e) => {
+      if (e.target === watchlistModal) {
+        watchlistModal.classList.add('modal-hidden');
+      }
+    });
+  }
+
+  // Watchlist tag renderer
+  renderWatchlistTags();
+
+  // Watchlist Input Autocomplete
+  const watchlistInput = document.getElementById('watchlistInput');
+  const watchlistAutocomplete = document.getElementById('watchlistAutocomplete');
+  let selectedWatchlistItem = null;
+
+  if (watchlistInput && watchlistAutocomplete) {
+    watchlistInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      selectedWatchlistItem = null;
+
+      if (query.length < 2) {
+        watchlistAutocomplete.classList.add('dropdown-hidden');
+        return;
+      }
+
+      const matches = state.items
+        .filter(item => item.name.toLowerCase().includes(query))
+        .slice(0, 10);
+
+      if (matches.length === 0) {
+        watchlistAutocomplete.classList.add('dropdown-hidden');
+        return;
+      }
+
+      watchlistAutocomplete.innerHTML = '';
+      matches.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = item.name;
+        div.addEventListener('click', () => {
+          watchlistInput.value = item.name;
+          selectedWatchlistItem = item;
+          watchlistAutocomplete.classList.add('dropdown-hidden');
+        });
+        watchlistAutocomplete.appendChild(div);
+      });
+
+      watchlistAutocomplete.classList.remove('dropdown-hidden');
+    });
+  }
+
+  // Watchlist Add button click
+  const btnAddWatchlist = document.getElementById('btnAddWatchlist');
+  if (btnAddWatchlist) {
+    btnAddWatchlist.addEventListener('click', () => {
+      let itemToAdd = null;
+      if (selectedWatchlistItem) {
+        itemToAdd = selectedWatchlistItem;
+      } else {
+        const typedText = watchlistInput.value.toLowerCase().trim();
+        const matched = state.items.find(item => item.name.toLowerCase() === typedText);
+        if (matched) {
+          itemToAdd = matched;
+        }
+      }
+
+      if (!itemToAdd) {
+        alert("Veuillez sélectionner un item valide.");
+        return;
+      }
+
+      if (state.watchlist.some(w => w.slug === itemToAdd.slug)) {
+        alert("Cet item figure déjà dans votre liste.");
+        return;
+      }
+
+      state.watchlist.push(itemToAdd);
+      localStorage.setItem('wardeals_watchlist', JSON.stringify(state.watchlist));
+      watchlistInput.value = '';
+      selectedWatchlistItem = null;
+      renderWatchlistTags();
+      renderDeals();
+    });
+  }
+}
+
+// Render active Watchlist Tags inside Modal
+function renderWatchlistTags() {
+  const listContainer = document.getElementById('watchlistItemsList');
+  if (!listContainer) return;
+  listContainer.innerHTML = '';
+  
+  if (state.watchlist.length === 0) {
+    listContainer.innerHTML = '<span style="font-size:11px; color:#5d718a; padding:6px 0;">Aucun objet dans votre watchlist.</span>';
+    return;
+  }
+  
+  state.watchlist.forEach(item => {
+    const tag = document.createElement('div');
+    tag.className = 'watchlist-tag';
+    tag.innerHTML = `
+      <span>${item.name}</span>
+      <button class="btn-delete-tag" data-slug="${item.slug}">&times;</button>
+    `;
+    
+    tag.querySelector('.btn-delete-tag').addEventListener('click', () => {
+      state.watchlist = state.watchlist.filter(w => w.slug !== item.slug);
+      localStorage.setItem('wardeals_watchlist', JSON.stringify(state.watchlist));
+      renderWatchlistTags();
+      renderDeals();
+    });
+    
+    listContainer.appendChild(tag);
+  });
+}
+
+// Update Theme UI button icons
+function updateThemeToggleUI(isLight) {
+  const btn = document.getElementById('btnThemeToggle');
+  if (!btn) return;
+  const darkIcon = btn.querySelector('.theme-icon-sombre');
+  const lightIcon = btn.querySelector('.theme-icon-clair');
+  
+  if (isLight) {
+    if (darkIcon) darkIcon.style.display = 'none';
+    if (lightIcon) lightIcon.style.display = 'inline-block';
+  } else {
+    if (darkIcon) darkIcon.style.display = 'inline-block';
+    if (lightIcon) lightIcon.style.display = 'none';
   }
 }
 
@@ -489,21 +655,13 @@ function matchesFilters(deal) {
     passSeller = deal.user.ingameName.toLowerCase().includes(state.filters.sellerName);
   }
 
-  // 7. Max Spotted Time max filters
-  let passTime = true;
-  if (state.filters.tempsMax) {
-    const elapsedSecs = Math.floor((Date.now() - deal.spottedAt) / 1000);
-    passTime = elapsedSecs <= state.filters.tempsMax;
-  }
-
-  // 8. Masquer deja vus
+  // 7. Masquer deja vus
   let passSeen = true;
   if (state.filters.masquerVus) {
-    // If deal.id was already present before current fetch, hide it
     passSeen = !state.seenDealIds.has(deal.id) || state.deals.slice(0, 2).some(d => d.id === deal.id);
   }
                    
-  return passDiscount && passProfit && passRarity && passText && passRank && passSeller && passTime && passSeen;
+  return passDiscount && passProfit && passRarity && passText && passRank && passSeller && passSeen;
 }
 
 // Show a browser/desktop notification for a newly spotted deal
@@ -570,23 +728,8 @@ async function pollStatus() {
     const res = await fetch('/api/status');
     const status = await res.json();
 
-    // Update active latency indicator
-    if (el.serverLatencyLabel) {
-      const randLat = Math.floor(Math.random() * 8) + 12;
-      el.serverLatencyLabel.textContent = `${randLat} ms`;
-    }
-
     // Direct binding updates
     if (el.statRequests) el.statRequests.innerHTML = `${status.requestsMade} <span class="h-suffix">/ min</span>`;
-    
-    const syncStatusLabel = document.getElementById('scannerStatusLabel');
-    if (syncStatusLabel) {
-      if (status.rateLimited) {
-        syncStatusLabel.textContent = "COOLDOWN API";
-      } else {
-        syncStatusLabel.textContent = status.queueLength > 0 ? "SCAN EN COURS" : "ACTIF";
-      }
-    }
   } catch (err) {
     console.error('Failed to poll status:', err);
   }
@@ -931,13 +1074,19 @@ async function pollDeals() {
         
         // Alert the user only if it matches their active control settings/filters
         if (matchesFilters(deal)) {
-          const rarity = getDealRarity(deal.discount);
-          
-          if (rarity === 'rare' || rarity === 'epic' || rarity === 'legendary') {
-            playNotificationSound(rarity);
+          // If watchlist is populated, only notify when the item is inside the watchlist!
+          let shouldAlert = true;
+          if (state.watchlist.length > 0) {
+            shouldAlert = state.watchlist.some(w => w.name.toLowerCase() === deal.name.toLowerCase());
           }
-          
-          showDesktopNotification(deal);
+
+          if (shouldAlert) {
+            const rarity = getDealRarity(deal.discount);
+            if (rarity === 'rare' || rarity === 'epic' || rarity === 'legendary') {
+              playNotificationSound(rarity);
+            }
+            showDesktopNotification(deal);
+          }
         }
       }
     });

@@ -1,0 +1,15 @@
+# RTTO-W11-PET4
+
+Asset Name: Bolt Bunny
+Asset Type: Pet Model
+Builder: Zero
+Container Form: n/a
+Current Owner: Zero
+Cycle Week: W11
+Dependencies: N/A
+Priority: High
+Scope: RTT (original)
+Spec Summary: New pet model, Storm theme. See RTT Pet Variant brief for per-pet notes.
+Status: Not Started
+Theme / Anime: Storm
+Used By: RTT

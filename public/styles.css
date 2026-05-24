@@ -1257,37 +1257,10 @@ input:checked + .toggle-slider:before {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 24px;
   z-index: 100;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-indicator.divider {
-  width: 1px;
-  height: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  margin: 0 16px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.status-dot.online {
-  background: var(--deal-green);
-  box-shadow: 0 0 6px var(--deal-green-glow);
-}
-
-.status-dot.server-dot {
-  background: var(--tenno-teal);
-  box-shadow: 0 0 6px var(--tenno-teal-glow);
+  transition: background var(--transition-normal);
 }
 
 .status-label {
@@ -1299,33 +1272,22 @@ input:checked + .toggle-slider:before {
   text-transform: uppercase;
 }
 
-.status-sub {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-left: 4px;
-}
-
-.font-bold {
-  font-weight: 800 !important;
-}
-
-.status-settings-btn {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.btn-theme-toggle {
+  background: transparent;
+  border: none;
   color: #5d718a;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 9px;
+  font-size: 10px;
   cursor: pointer;
-  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  outline: none;
   transition: color var(--transition-normal);
 }
 
-.status-settings-btn:hover {
+.btn-theme-toggle:hover {
   color: #ffffff;
 }
 
@@ -1345,4 +1307,303 @@ input:checked + .toggle-slider:before {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--orokin-gold);
+}
+
+/* ==========================================================================
+   REFRESH BUTTONS & SPINNING ANIMATION
+   ========================================================================== */
+.btn-refresh-deals {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-normal);
+}
+
+.btn-refresh-deals:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--tenno-teal);
+  color: var(--tenno-teal);
+}
+
+body.light-theme .btn-refresh-deals {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #2d3748;
+}
+
+body.light-theme .btn-refresh-deals:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0087a3;
+  border-color: #0087a3;
+}
+
+.refresh-spinner {
+  display: inline-block;
+  transition: transform 0.8s ease;
+}
+
+.btn-refresh-deals.refreshing .refresh-spinner {
+  animation: spinner-spin 0.8s linear infinite;
+}
+
+@keyframes spinner-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   WATCHLIST MODAL & OVERLAYS
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.modal-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modal-content {
+  width: 500px;
+  background: var(--bg-sidebar);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-premium);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  animation: modal-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+body.light-theme .modal-content {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+}
+
+@keyframes modal-enter {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.watchlist-modal-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+body.light-theme .watchlist-modal-title {
+  color: #1a202c;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: #a0aec0;
+  font-size: 24px;
+  cursor: pointer;
+  outline: none;
+}
+
+.btn-close:hover {
+  color: #ffffff;
+}
+body.light-theme .btn-close:hover {
+  color: #1a202c;
+}
+
+.modal-desc {
+  font-size: 11px;
+  color: #7d8b9e;
+  line-height: 1.5;
+}
+
+.watchlist-add-row {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-add-watchlist {
+  background: var(--orokin-gold);
+  color: #000000;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  padding: 0 20px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-add-watchlist:hover {
+  background: #ffffff;
+}
+
+.watchlist-items-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.watchlist-tag {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #ffffff;
+}
+
+body.light-theme .watchlist-tag {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #2d3748;
+}
+
+.watchlist-tag .btn-delete-tag {
+  background: transparent;
+  border: none;
+  color: #a0aec0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.watchlist-tag .btn-delete-tag:hover {
+  color: var(--danger-red);
+}
+
+/* ==========================================================================
+   LIGHT MODE PALETTE OVERRIDES
+   ========================================================================== */
+body.light-theme {
+  --bg-dark-base: #f0f2f5;
+  --bg-sidebar: #ffffff;
+  --bg-main: #f5f7fa;
+  --bg-box: #e2e8f0;
+  --bg-card: #ffffff;
+  color: #2d3748;
+}
+
+body.light-theme .title-main,
+body.light-theme .scan-title,
+body.light-theme .preset-tab:hover,
+body.light-theme .section-header:hover,
+body.light-theme .featured-title,
+body.light-theme .card-item-name,
+body.light-theme .c-val,
+body.light-theme .pr-val,
+body.light-theme .search-deals-wrapper input[type="text"]:focus {
+  color: #1a202c !important;
+}
+
+body.light-theme .preset-tab {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #4a5568;
+}
+
+body.light-theme .preset-tab.active {
+  background: rgba(0, 208, 240, 0.12) !important;
+  color: #0087a3 !important;
+}
+
+body.light-theme .sidebar-search-container input[type="text"],
+body.light-theme .sidebar-input-text,
+body.light-theme .sidebar-select,
+body.light-theme .search-deals-wrapper input[type="text"] {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1a202c;
+}
+
+body.light-theme .compact-deal-card {
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .compact-deal-card:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light-theme .card-prices-grid {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .featured-deal-card {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .featured-left-image,
+body.light-theme .card-image-box {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme .btn-compact-copy {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #4a5568;
+}
+
+body.light-theme .btn-compact-copy:hover {
+  background: var(--orokin-gold);
+  color: #000000;
+}
+
+body.light-theme .scanning-widget {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme .sidebar {
+  border-right-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .top-bar {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .preset-tabs,
+body.light-theme .global-status-bar {
+  background: #ffffff;
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .btn-theme-toggle {
+  color: #4a5568;
+}
+
+body.light-theme .btn-theme-toggle:hover {
+  color: #1a202c;
 }
