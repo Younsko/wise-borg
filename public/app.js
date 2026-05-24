@@ -2,6 +2,21 @@
    WARDEALS - Warframe Sniper Premium Frontend Logic (Vanilla JS)
    ========================================================================== */
 
+// Global fetch interceptor to handle 401 Unauthorized globally (Anti-Bypass)
+const originalFetch = window.fetch;
+window.fetch = async function (...args) {
+  try {
+    const response = await originalFetch(...args);
+    if (response.status === 401 && !(typeof args[0] === 'string' && args[0].includes('/api/login'))) {
+      console.warn("Unauthorized access - Redirecting to login page...");
+      window.location.href = "/login.html";
+    }
+    return response;
+  } catch (err) {
+    throw err;
+  }
+};
+
 // Application State
 const state = {
   items: [],              // All tradable items for manual autocomplete
@@ -465,6 +480,21 @@ function setupWatchlistAndTheme() {
       const isLight = document.body.classList.toggle('light-theme');
       localStorage.setItem('wardeals_theme', isLight ? 'light' : 'dark');
       updateThemeToggleUI(isLight);
+    });
+  }
+
+  const btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', async () => {
+      if (confirm("Voulez-vous vraiment vous déconnecter de la console tactique ?")) {
+        try {
+          await fetch('/api/logout', { method: 'POST' });
+          window.location.href = '/login.html';
+        } catch (e) {
+          console.error('Logout failed:', e);
+          window.location.href = '/login.html';
+        }
+      }
     });
   }
 

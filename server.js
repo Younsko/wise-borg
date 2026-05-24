@@ -76,33 +76,86 @@ let isProcessingQueue = false;
 // Express setup
 app.use(express.json());
 
-// Optional Basic Authentication for private cloud hosting (Render, Railway, etc.)
-// Active only if SECURITY_USER and SECURITY_PASS environment variables are defined.
+const crypto = require('crypto');
+
+const AUTH_CODE = process.env.AUTH_CODE || "younskamuniverse";
+const AUTH_TOKEN = crypto.createHash('sha256').update(AUTH_CODE).digest('hex');
+
+// Utility to parse cookies manually without dependencies
+function parseCookies(req) {
+  const list = {};
+  const rc = req.headers.cookie;
+  if (rc) {
+    rc.split(';').forEach(cookie => {
+      const parts = cookie.split('=');
+      list[parts.shift().trim()] = decodeURI(parts.join('='));
+    });
+  }
+  return list;
+}
+
+// Passcode Authentication middleware for web hosting (Render, Railway, etc.)
 app.use((req, res, next) => {
-  const securityUser = process.env.SECURITY_USER;
-  const securityPass = process.env.SECURITY_PASS;
-
-  if (securityUser && securityPass) {
+  req.cookies = parseCookies(req);
+  
+  // 1. Exclude public assets, login resources and authentication API endpoints from protection
+  const isPublicAsset = 
+    req.path === '/login.html' || 
+    req.path === '/api/login' || 
+    req.path.startsWith('/assets/') || 
+    req.path.startsWith('/backup_') ||
+    req.path === '/styles.css';
+    
+  if (isPublicAsset) {
+    return next();
+  }
+  
+  // 2. Validate token from Cookie or Authorization header
+  let token = req.cookies.wardeals_auth;
+  if (!token) {
     const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      res.setHeader('WWW-Authenticate', 'Basic realm="Wise Borg Sniper Private Area"');
-      return res.status(401).send('Authentication required.');
-    }
-
-    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
-    const user = auth[0];
-    const pass = auth[1];
-
-    if (user === securityUser && pass === securityPass) {
-      return next();
-    } else {
-      res.setHeader('WWW-Authenticate', 'Basic realm="Wise Borg Sniper Private Area"');
-      return res.status(401).send('Invalid credentials.');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
     }
   }
-  next();
+  
+  if (token === AUTH_TOKEN) {
+    return next();
+  }
+  
+  // 3. Unauthorized handling
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // If requesting a static HTML page or root path, redirect to login screen
+  res.redirect('/login.html');
 });
 
+// Endpoint POST /api/login to check passcode and set secure HttpOnly cookie
+app.post('/api/login', (req, res) => {
+  const { code } = req.body;
+  if (!code) {
+    return res.status(400).json({ error: 'Code requis.' });
+  }
+  
+  if (code === AUTH_CODE) {
+    // Set cookie wardeals_auth to the sha256 token. Max-Age: 1 year
+    // HttpOnly makes it invisible to JavaScript to prevent XSS. SameSite=Strict blocks CSRF.
+    res.setHeader('Set-Cookie', `wardeals_auth=${AUTH_TOKEN}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict`);
+    return res.json({ success: true, token: AUTH_TOKEN });
+  } else {
+    return res.status(401).json({ error: 'Code d\'authentification invalide.' });
+  }
+});
+
+// Endpoint POST /api/logout to clear the authentication cookie
+app.post('/api/logout', (req, res) => {
+  res.setHeader('Set-Cookie', `wardeals_auth=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict`);
+  return res.json({ success: true });
+});
+
+// Serve public static folder
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helper to make HTTPS requests to WFM API v2
