@@ -994,22 +994,24 @@ function renderGridDeals(dealsList) {
           <span class="card-spotted-ago">${timeAgo}</span>
         </div>
         
-        <div class="card-image-box">
-          <img src="${imageUrl}" alt="${deal.name}" onerror="this.src='https://warframe.market/static/assets/items/images/en/thumbs/general_item.png'">
-        </div>
-        
-        <div class="card-title-group">
-          <h3 class="card-item-name" title="${deal.name}">${deal.name}</h3>
-          <span class="card-rank-details">
-            ${deal.rank !== undefined && deal.rank !== null ? `Rank ${deal.rank}` : (deal.subtype ? deal.subtype : 'Objet')}
-            ${deal.reqMasteryRank ? `&bull; <span class="compact-badge-mr">MR ${deal.reqMasteryRank}</span>` : ''}
-          </span>
-        </div>
-        
-        <div class="card-seller-tag">
-          <span class="card-seller-dot"></span>
-          <span class="card-seller-name" title="${deal.user.ingameName}">${deal.user.ingameName}</span>
-          <span class="card-seller-rep">&#9733; ${deal.user.reputation}</span>
+        <div class="card-main-content">
+          <div class="card-image-square">
+            <img src="${imageUrl}" alt="${deal.name}" onerror="this.src='https://warframe.market/static/assets/items/images/en/thumbs/general_item.png'">
+          </div>
+          
+          <div class="card-details-side">
+            <h3 class="card-item-name" title="${deal.name}">${deal.name}</h3>
+            <span class="card-rank-details">
+              ${deal.rank !== undefined && deal.rank !== null ? `Rank ${deal.rank}` : (deal.subtype ? deal.subtype : 'Objet')}
+              ${deal.reqMasteryRank ? `&bull; <span class="compact-badge-mr">MR ${deal.reqMasteryRank}</span>` : ''}
+            </span>
+            
+            <div class="card-seller-tag">
+              <span class="card-seller-dot"></span>
+              <span class="card-seller-name" title="${deal.user.ingameName}">${deal.user.ingameName}</span>
+              <span class="card-seller-rep">&#9733; ${deal.user.reputation}</span>
+            </div>
+          </div>
         </div>
         
         <div class="card-prices-grid">
