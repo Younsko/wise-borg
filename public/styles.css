@@ -1563,417 +1563,73 @@ body.light-theme .card-prices-grid {
 }
 
 body.light-theme .featured-deal-card {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  color: #1a202c !important;
+}
+
+/* Override dark background gradients on featured cards in light mode */
+body.light-theme .featured-deal-card.card-legendary {
+  background: linear-gradient(135deg, rgba(229, 185, 95, 0.12) 0%, #ffffff 100%) !important;
+  box-shadow: 0 6px 24px rgba(229, 185, 95, 0.08);
+}
+body.light-theme .featured-deal-card.card-epic {
+  background: linear-gradient(135deg, rgba(163, 48, 201, 0.12) 0%, #ffffff 100%) !important;
+  box-shadow: 0 6px 24px rgba(163, 48, 201, 0.08);
+}
+body.light-theme .featured-deal-card.card-rare {
+  background: linear-gradient(135deg, rgba(0, 208, 240, 0.12) 0%, #ffffff 100%) !important;
+  box-shadow: 0 6px 24px rgba(0, 208, 240, 0.08);
+}
+body.light-theme .featured-deal-card.card-uncommon {
+  background: linear-gradient(135deg, rgba(0, 230, 118, 0.08) 0%, #ffffff 100%) !important;
+  box-shadow: 0 6px 24px rgba(0, 230, 118, 0.08);
+}
+body.light-theme .featured-deal-card.card-common {
+  background: #ffffff !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04);
+}
+
+/* Light mode text contrast fixes inside cards */
+body.light-theme .featured-title {
+  color: #1a202c !important;
+}
+body.light-theme .seller-txt,
+body.light-theme .featured-spotted-time,
+body.light-theme .pr-lbl,
+body.light-theme .prof-lbl,
+body.light-theme .c-lbl {
+  color: #4a5568 !important;
+}
+body.light-theme .featured-spotted-time {
+  opacity: 0.85;
+}
+body.light-theme .prof-val {
+  color: #0087a3 !important; /* Beautiful distinct teal profit font */
+}
+body.light-theme .c-price-box {
+  border-right-color: rgba(0, 0, 0, 0.06);
+}
+body.light-theme .card-spotted-ago,
+body.light-theme .card-rank-details {
+  color: #718096 !important;
+}
+body.light-theme .card-seller-name,
+body.light-theme .card-seller-rep {
+  color: #4a5568 !important;
+}
+body.light-theme .btn-feat-primary {
+  background: var(--orokin-gold) !important;
+  color: #000000 !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 2px 8px rgba(204, 161, 82, 0.25) !important;
+}
+body.light-theme .btn-feat-primary:hover {
+  background: #dbb263 !important;
 }
 
 body.light-theme .featured-left-image,
 body.light-theme .card-image-box {
   background: rgba(0, 0, 0, 0.02);
-}
-
-body.light-theme .btn-compact-copy {
-  background: rgba(0, 0, 0, 0.03);
-  border-color: rgba(0, 0, 0, 0.06);
-  color: #4a5568;
-}
-
-body.light-theme .btn-compact-copy:hover {
-  background: var(--orokin-gold);
-  color: #000000;
-}
-
-body.light-theme .scanning-widget {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-body.light-theme .sidebar {
-  border-right-color: rgba(0, 0, 0, 0.06);
-}
-
-body.light-theme .top-bar {
-  border-bottom-color: rgba(0, 0, 0, 0.06);
-}
-
-body.light-theme .preset-tabs,
-body.light-theme .global-status-bar {
-  background: #ffffff;
-  border-top-color: rgba(0, 0, 0, 0.06);
-}
-
-body.light-theme .btn-theme-toggle {
-  color: #4a5568;
-}
-
-body.light-theme .btn-theme-toggle:hover {
-  color: #1a202c;
-}
-
-/* ==========================================================================
-   WARDEALS PREMIUM LOGIN SCREEN
-   ========================================================================== */
-.login-body {
-  background-color: #05080c;
-  background-image: 
-    radial-gradient(circle at 20% 30%, rgba(204, 161, 82, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(0, 230, 118, 0.03) 0%, transparent 40%),
-    linear-gradient(rgba(255, 255, 255, 0.005) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 20px 20px, 20px 20px;
-  overflow: hidden;
-  height: 100vh;
-  margin: 0;
-  font-family: var(--font-main);
-}
-
-.login-layout {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  width: 100vw;
-  position: relative;
-  z-index: 2;
-}
-
-/* Cyber glowing shapes in background */
-.login-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  z-index: 1;
-}
-.glow-1 {
-  width: 300px;
-  height: 300px;
-  background: rgba(204, 161, 82, 0.08);
-  top: 15%;
-  left: 20%;
-  animation: float-slow-1 12s ease-in-out infinite alternate;
-}
-.glow-2 {
-  width: 400px;
-  height: 400px;
-  background: rgba(0, 135, 163, 0.06);
-  bottom: 10%;
-  right: 15%;
-  animation: float-slow-2 15s ease-in-out infinite alternate;
-}
-
-@keyframes float-slow-1 {
-  0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(-40px) scale(1.1); }
-}
-@keyframes float-slow-2 {
-  0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(50px) scale(1.05); }
-}
-
-/* Glassmorphic Login Card */
-.login-card {
-  width: 100%;
-  max-width: 440px;
-  background: rgba(9, 14, 20, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 
-    0 24px 60px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 0 40px rgba(204, 161, 82, 0.03);
-  padding: 40px;
-  border-radius: 12px;
-  position: relative;
-  z-index: 5;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-sizing: border-box;
-}
-
-.login-logo-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.login-logo-icon {
-  width: 64px;
-  height: 64px;
-  filter: drop-shadow(0 0 10px rgba(204, 161, 82, 0.3));
-  margin-bottom: 16px;
-  animation: login-sigil-pulse 3s infinite ease-in-out;
-}
-
-@keyframes login-sigil-pulse {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(204, 161, 82, 0.25)); }
-  50% { transform: scale(1.04); filter: drop-shadow(0 0 16px rgba(204, 161, 82, 0.45)); }
-}
-
-.login-title {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: 4px;
-  color: #ffffff;
-  margin: 0 0 4px 0;
-}
-
-.login-subtitle {
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--orokin-gold);
-  letter-spacing: 3px;
-  margin: 0;
-}
-
-/* Security notice block */
-.security-warning {
-  display: flex;
-  gap: 12px;
-  background: rgba(204, 161, 82, 0.04);
-  border: 1px solid rgba(204, 161, 82, 0.12);
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 28px;
-  align-items: flex-start;
-}
-
-.warning-icon {
-  font-size: 16px;
-  margin-top: 1px;
-}
-
-.warning-text {
-  font-size: 11px;
-  line-height: 1.5;
-  color: #a0aec0;
-}
-
-/* Input entry fields */
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.login-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.login-label {
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 700;
-  color: #718096;
-  letter-spacing: 1.5px;
-}
-
-.login-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 14px;
-  font-size: 14px;
-  opacity: 0.6;
-}
-
-.login-input-wrapper input {
-  width: 100%;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 12px 40px 12px 40px;
-  color: #ffffff;
-  font-size: 14px;
-  letter-spacing: 2px;
-  transition: all var(--transition-normal);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.login-input-wrapper input:focus {
-  border-color: var(--orokin-gold);
-  background: rgba(0, 0, 0, 0.4);
-  box-shadow: 0 0 12px rgba(204, 161, 82, 0.15);
-}
-
-.btn-toggle-mask {
-  position: absolute;
-  right: 14px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  opacity: 0.6;
-  padding: 4px;
-  transition: opacity 0.2s;
-}
-.btn-toggle-mask:hover {
-  opacity: 1;
-}
-
-/* Errors validations */
-.login-error-msg {
-  font-size: 11px;
-  color: #ff5252;
-  margin-top: 4px;
-  display: none;
-  transition: opacity 0.2s;
-  opacity: 0;
-}
-.login-error-msg.visible {
-  display: block;
-  opacity: 1;
-}
-
-/* Pulsing Unlock button */
-.btn-unlock-console {
-  background: linear-gradient(135deg, #cca152 0%, #a47a2f 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #000000;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 2px;
-  padding: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all var(--transition-normal);
-  box-shadow: 0 4px 15px rgba(204, 161, 82, 0.25);
-  outline: none;
-}
-
-.btn-unlock-console:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 
-    0 6px 20px rgba(204, 161, 82, 0.35),
-    0 0 25px rgba(204, 161, 82, 0.15);
-  background: linear-gradient(135deg, #dbb263 0%, #b2883a 100%);
-}
-
-.btn-unlock-console:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.btn-unlock-console:disabled {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.05);
-  color: #4a5568;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-.btn-unlock-console.success {
-  background: linear-gradient(135deg, #00e676 0%, #00b0ff 100%);
-  box-shadow: 0 4px 20px rgba(0, 230, 118, 0.3);
-  color: #ffffff;
-}
-
-.unlock-arrow {
-  transition: transform 0.3s;
-}
-.btn-unlock-console:hover .unlock-arrow {
-  transform: translateX(4px);
-}
-
-.login-card-footer {
-  text-align: center;
-  margin-top: 30px;
-  font-size: 9px;
-  color: #4a5568;
-  letter-spacing: 1px;
-}
-
-/* Animations keyframes */
-.shake-error {
-  animation: shake-anim 0.5s ease-in-out;
-}
-@keyframes shake-anim {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-8px); }
-  40%, 80% { transform: translateX(8px); }
-}
-
-.fade-success {
-  transform: scale(0.96);
-  opacity: 0.8;
-  box-shadow: 
-    0 0 50px rgba(0, 230, 118, 0.15),
-    0 24px 60px rgba(0, 0, 0, 0.6);
-  border-color: rgba(0, 230, 118, 0.3);
-}
-
-/* ==========================================================================
-   LIGHT MODE OVERRIDES FOR LOGIN PORTAL
-   ========================================================================== */
-body.light-theme.login-body {
-  background-color: #f7fafc;
-  background-image: 
-    radial-gradient(circle at 20% 30%, rgba(204, 161, 82, 0.06) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(0, 135, 163, 0.04) 0%, transparent 40%),
-    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 20px 20px, 20px 20px;
-}
-
-body.light-theme .glow-1 {
-  background: rgba(204, 161, 82, 0.08);
-}
-body.light-theme .glow-2 {
-  background: rgba(0, 135, 163, 0.06);
-}
-
-body.light-theme .login-card {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 
-    0 24px 60px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 0 30px rgba(204, 161, 82, 0.02);
-}
-
-body.light-theme .login-title {
-  color: #1a202c;
-}
-
-body.light-theme .warning-text {
-  color: #4a5568;
-}
-body.light-theme .security-warning {
-  background: rgba(204, 161, 82, 0.06);
-  border-color: rgba(204, 161, 82, 0.15);
-}
-
-body.light-theme .login-label {
-  color: #4a5568;
-}
-
-body.light-theme .login-input-wrapper input {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  color: #1a202c;
-}
-
-body.light-theme .login-input-wrapper input:focus {
-  background: #ffffff;
-  border-color: #cca152;
-  box-shadow: 0 0 10px rgba(204, 161, 82, 0.12);
-}
-
-body.light-theme .btn-unlock-console {
-  box-shadow: 0 4px 12px rgba(204, 161, 82, 0.2);
-}
-
-body.light-theme .login-card-footer {
-  color: #718096;
 }
 
